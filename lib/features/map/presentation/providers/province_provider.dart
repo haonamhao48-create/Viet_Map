@@ -1,0 +1,141 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/utils/text_normalizer.dart';
+import '../../data/datasources/province_local_datasource.dart';
+import '../../data/datasources/tourism_local_datasource.dart';
+import '../../data/models/province_model.dart';
+import '../../data/models/tourism_destination_model.dart';
+import '../../data/repositories/province_repository.dart';
+import '../../data/repositories/tourism_repository.dart';
+
+final provinceLocalDataSourceProvider = Provider<ProvinceLocalDataSource>((
+  ref,
+) {
+  return ProvinceLocalDataSource();
+});
+
+final provinceRepositoryProvider = Provider<ProvinceRepository>((ref) {
+  final dataSource = ref.read(provinceLocalDataSourceProvider);
+  return ProvinceRepository(dataSource);
+});
+
+final tourismLocalDataSourceProvider = Provider<TourismLocalDataSource>((ref) {
+  return TourismLocalDataSource();
+});
+
+final tourismRepositoryProvider = Provider<TourismRepository>((ref) {
+  final dataSource = ref.read(tourismLocalDataSourceProvider);
+  return TourismRepository(dataSource);
+});
+
+final provincesProvider = FutureProvider<List<ProvinceModel>>((ref) async {
+  final repository = ref.read(provinceRepositoryProvider);
+  return repository.getProvinces();
+});
+
+final tourismDestinationsProvider =
+    FutureProvider<List<TourismDestinationModel>>((ref) async {
+      final repository = ref.read(tourismRepositoryProvider);
+      return repository.getDestinations();
+    });
+
+final selectedProvinceIdProvider = StateProvider<String?>((ref) => null);
+
+final hoveredProvinceIdProvider = StateProvider<String?>((ref) => null);
+
+final provinceSearchQueryProvider = StateProvider<String>((ref) => '');
+
+final filteredProvincesProvider = Provider<List<ProvinceModel>>((ref) {
+  final provinces = ref.watch(provincesProvider).valueOrNull ?? const [];
+  final query = TextNormalizer.normalizeVietnamese(
+    ref.watch(provinceSearchQueryProvider),
+  );
+
+  final filtered = provinces
+      .where((province) {
+        if (query.isEmpty) {
+          return true;
+        }
+
+        final haystacks = [
+          province.displayName,
+          province.name,
+          province.shortName,
+          province.type,
+          province.capital ?? '',
+          province.macroRegion,
+        ].map(TextNormalizer.normalizeVietnamese);
+
+        return haystacks.any((value) => value.contains(query));
+      })
+      .toList(growable: false);
+
+  filtered.sort((a, b) => a.displayName.compareTo(b.displayName));
+  return filtered;
+});
+
+final matchingProvinceIdsProvider = Provider<Set<String>>((ref) {
+  return ref
+      .watch(filteredProvincesProvider)
+      .map((province) => province.id)
+      .toSet();
+});
+
+final selectedProvinceProvider = Provider<ProvinceModel?>((ref) {
+  final selectedId = ref.watch(selectedProvinceIdProvider);
+  final provinces = ref.watch(provincesProvider).valueOrNull;
+
+  if (selectedId == null || provinces == null) {
+    return null;
+  }
+
+  for (final province in provinces) {
+    if (province.id == selectedId) {
+      return province;
+    }
+  }
+
+  return null;
+});
+
+final selectedProvinceTourismProvider =
+    Provider<AsyncValue<List<TourismDestinationModel>>>((ref) {
+      final selectedProvince = ref.watch(selectedProvinceProvider);
+      final destinationsAsync = ref.watch(tourismDestinationsProvider);
+
+      if (selectedProvince == null) {
+        return const AsyncData(<TourismDestinationModel>[]);
+      }
+
+      return destinationsAsync.whenData(
+        (destinations) => destinations
+            .where(
+              (destination) => _matchesProvince(
+                province: selectedProvince,
+                tourismProvinceName: destination.province,
+              ),
+            )
+            .toList(growable: false),
+      );
+    });
+
+bool _matchesProvince({
+  required ProvinceModel province,
+  required String tourismProvinceName,
+}) {
+  final tourismKey = TextNormalizer.normalizeProvinceKey(tourismProvinceName);
+  if (tourismKey.isEmpty) {
+    return false;
+  }
+
+  final candidates = <String>{
+    province.displayName,
+    province.name,
+    province.shortName,
+  }
+      .map(TextNormalizer.normalizeProvinceKey)
+      .where((value) => value.isNotEmpty)
+      .toSet();
+
+  return candidates.contains(tourismKey);
+}
