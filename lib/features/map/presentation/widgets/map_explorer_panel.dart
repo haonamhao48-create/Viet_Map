@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/province_model.dart';
 import '../../data/models/tourism_destination_model.dart';
 import '../providers/province_provider.dart';
+import '../screens/travel_places_screen.dart';
 
 class MapExplorerPanel extends ConsumerStatefulWidget {
   const MapExplorerPanel({
@@ -423,6 +424,25 @@ class _SelectedProvinceCard extends ConsumerWidget {
               ),
             ),
           ],
+          const SizedBox(height: 16),
+
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TravelPlacesScreen(
+                      province: province,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.travel_explore_rounded),
+              label: const Text('Xem bản đồ phượt'),
+            ),
+          ),
           const SizedBox(height: 18),
           Text(
             'Địa điểm du lịch',
