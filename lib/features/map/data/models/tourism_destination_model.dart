@@ -4,6 +4,8 @@ class TourismDestinationModel {
   final String province;
   final String description;
   final List<String> keywords;
+  final double latitude;
+  final double longitude;
 
   const TourismDestinationModel({
     required this.id,
@@ -11,6 +13,8 @@ class TourismDestinationModel {
     required this.province,
     required this.description,
     required this.keywords,
+    this.latitude = 0,
+    this.longitude = 0,
   });
 
   factory TourismDestinationModel.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,8 @@ class TourismDestinationModel {
           .map((item) => item.toString())
           .where((item) => item.isNotEmpty)
           .toList(growable: false),
+      latitude: _toDouble(json['latitude']),
+      longitude: _toDouble(json['longitude']),
     );
   }
 
@@ -32,5 +38,13 @@ class TourismDestinationModel {
     }
 
     return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  static double _toDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 }

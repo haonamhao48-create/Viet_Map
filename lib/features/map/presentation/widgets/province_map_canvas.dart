@@ -3,8 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/datasources/tourism_local_datasource.dart';
 import '../../data/models/province_model.dart';
+import '../../data/models/tourism_destination_model.dart';
 import '../providers/province_provider.dart';
+import '../screens/travel_places_screen.dart';
 import 'map_explorer_panel.dart';
 
 class ProvinceMapCanvas extends ConsumerStatefulWidget {
@@ -21,6 +24,7 @@ class _ProvinceMapCanvasState extends ConsumerState<ProvinceMapCanvas> {
   static const int _hoverSuspendAfterTransformMs = 90;
 
   late final TransformationController _transformationController;
+  late final Future<List<TourismDestinationModel>> _tourismFuture;
   ProvinceMapScene? _scene;
   Size _viewportSize = Size.zero;
   DateTime? _lastTransformAt;
@@ -28,6 +32,7 @@ class _ProvinceMapCanvasState extends ConsumerState<ProvinceMapCanvas> {
   @override
   void initState() {
     super.initState();
+    _tourismFuture = TourismLocalDataSource().loadDestinations();
     _transformationController = TransformationController();
     _transformationController.addListener(_handleTransformChanged);
   }
@@ -43,12 +48,16 @@ class _ProvinceMapCanvasState extends ConsumerState<ProvinceMapCanvas> {
   Widget build(BuildContext context) {
     final provincesAsync = ref.watch(provincesProvider);
     final selectedId = ref.watch(selectedProvinceIdProvider);
+    final featuredTravelMode = ref.watch(featuredTravelModeProvider);
+    final compareMode = ref.watch(compareModeProvider);
+    final firstCompareId = ref.watch(firstCompareProvinceIdProvider);
+    final secondCompareId = ref.watch(secondCompareProvinceIdProvider);
     final hoveredId = ref.watch(hoveredProvinceIdProvider);
     final matchingIds = ref.watch(matchingProvinceIdsProvider);
-    final hasActiveFilter = ref
-        .watch(provinceSearchQueryProvider)
-        .trim()
-        .isNotEmpty;
+    final selectedRegion = ref.watch(selectedRegionFilterProvider);
+    final hasActiveFilter =
+        ref.watch(provinceSearchQueryProvider).trim().isNotEmpty ||
+        selectedRegion != null;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -61,7 +70,7 @@ class _ProvinceMapCanvasState extends ConsumerState<ProvinceMapCanvas> {
             final selectedProvince = selectedId == null
                 ? null
                 : scene.provinceById[selectedId];
-
+            final featuredPlacesFuture = _tourismFuture;
             return MouseRegion(
               onExit: (_) {
                 ref.read(hoveredProvinceIdProvider.notifier).state = null;
@@ -95,8 +104,12 @@ class _ProvinceMapCanvasState extends ConsumerState<ProvinceMapCanvas> {
                               painter: _ProvinceMapPainter(
                                 scene: scene,
                                 selectedProvinceId: selectedId,
+                                compareMode: compareMode,
+                                firstCompareProvinceId: firstCompareId,
+                                secondCompareProvinceId: secondCompareId,
                                 hoveredProvinceId: hoveredId,
                                 matchingProvinceIds: matchingIds,
+                                selectedRegionFilter: selectedRegion,
                                 hasActiveFilter: hasActiveFilter,
                                 colorScheme: Theme.of(context).colorScheme,
                               ),
@@ -124,15 +137,115 @@ class _ProvinceMapCanvasState extends ConsumerState<ProvinceMapCanvas> {
                           }
                         },
                         onPointerDown: (event) {
+                          if (featuredTravelMode) {
+                            return;
+                          }
                           final provinceId = _provinceIdAtPosition(
                             scene,
                             event.localPosition,
                           );
-                          ref.read(selectedProvinceIdProvider.notifier).state =
-                              provinceId;
+
+                          if (provinceId == null) {
+                            ref
+                                    .read(selectedProvinceIdProvider.notifier)
+                                    .state =
+                                null;
+                            return;
+                          }
+
+                          final compareMode = ref.read(compareModeProvider);
+
+                          if (!compareMode) {
+                            ref
+                                    .read(selectedProvinceIdProvider.notifier)
+                                    .state =
+                                provinceId;
+                            return;
+                          }
+
+                          final firstId = ref.read(
+                            firstCompareProvinceIdProvider,
+                          );
+                          final secondId = ref.read(
+                            secondCompareProvinceIdProvider,
+                          );
+
+                          if (firstId == provinceId) {
+                            ref
+                                    .read(
+                                      firstCompareProvinceIdProvider.notifier,
+                                    )
+                                    .state =
+                                null;
+                            return;
+                          }
+
+                          if (secondId == provinceId) {
+                            ref
+                                    .read(
+                                      secondCompareProvinceIdProvider.notifier,
+                                    )
+                                    .state =
+                                null;
+                            return;
+                          }
+
+                          if (firstId == null) {
+                            ref
+                                    .read(
+                                      firstCompareProvinceIdProvider.notifier,
+                                    )
+                                    .state =
+                                provinceId;
+                          } else if (secondId == null) {
+                            ref
+                                    .read(
+                                      secondCompareProvinceIdProvider.notifier,
+                                    )
+                                    .state =
+                                provinceId;
+                          } else {
+                            ref
+                                    .read(
+                                      firstCompareProvinceIdProvider.notifier,
+                                    )
+                                    .state =
+                                provinceId;
+                            ref
+                                    .read(
+                                      secondCompareProvinceIdProvider.notifier,
+                                    )
+                                    .state =
+                                null;
+                          }
                         },
                       ),
+
                     ),
+                    if (featuredTravelMode)
+                      FutureBuilder<List<TourismDestinationModel>>(
+                        future: featuredPlacesFuture,
+                        builder: (context, snapshot) {
+                          final places = snapshot.data ?? const <TourismDestinationModel>[];
+
+                          return Positioned.fill(
+                            child: _FeaturedTravelOverlay(
+                              scene: scene,
+                              places: places,
+                              onOpenProvince: (province) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => TravelPlacesScreen(
+                                      province: province,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      ),
                     if (!widget.isMobile)
                       Positioned(
                         left: 18,
@@ -202,7 +315,8 @@ class _ProvinceMapCanvasState extends ConsumerState<ProvinceMapCanvas> {
         return province.province.id;
       }
 
-      if (province.bounds != Rect.zero && !province.bounds.inflate(6).contains(scenePoint)) {
+      if (province.bounds != Rect.zero &&
+          !province.bounds.inflate(6).contains(scenePoint)) {
         if (!province.isTinyInteractive ||
             !province.bounds.inflate(14).contains(scenePoint)) {
           continue;
@@ -236,18 +350,26 @@ class _ProvinceMapPainter extends CustomPainter {
   const _ProvinceMapPainter({
     required this.scene,
     required this.selectedProvinceId,
+    required this.compareMode,
+    required this.firstCompareProvinceId,
+    required this.secondCompareProvinceId,
     required this.hoveredProvinceId,
     required this.matchingProvinceIds,
     required this.hasActiveFilter,
     required this.colorScheme,
+    required this.selectedRegionFilter,
   });
 
   final ProvinceMapScene scene;
   final String? selectedProvinceId;
+  final bool compareMode;
+  final String? firstCompareProvinceId;
+  final String? secondCompareProvinceId;
   final String? hoveredProvinceId;
   final Set<String> matchingProvinceIds;
   final bool hasActiveFilter;
   final ColorScheme colorScheme;
+  final String? selectedRegionFilter;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -284,9 +406,15 @@ class _ProvinceMapPainter extends CustomPainter {
     }
 
     for (final province in scene.renderProvinces) {
-      final isSelected = province.province.id == selectedProvinceId;
+      final isSelected = compareMode
+          ? province.province.id == firstCompareProvinceId ||
+                province.province.id == secondCompareProvinceId
+          : province.province.id == selectedProvinceId;
       final isHovered = province.province.id == hoveredProvinceId;
       final isMatch = matchingProvinceIds.contains(province.province.id);
+      final isRegionMatch =
+          selectedRegionFilter == null ||
+          province.province.macroRegion == selectedRegionFilter;
       final isArchipelago = province.province.isDerivedArchipelago;
       final baseColor = ProvinceRegionPalette.colorForRegion(
         province.province.macroRegion,
@@ -305,6 +433,7 @@ class _ProvinceMapPainter extends CustomPainter {
                 isSelected: isSelected,
                 isHovered: isHovered,
                 isMatch: isMatch,
+                isRegionMatch: isRegionMatch,
               );
 
       final borderPaint = Paint()
@@ -323,8 +452,8 @@ class _ProvinceMapPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = province.isTiny
             ? (isArchipelago
-                ? (isSelected ? 1.8 : (isHovered ? 1.5 : 1.1))
-                : (isSelected ? 3.6 : (isHovered ? 3.0 : 1.4)))
+                  ? (isSelected ? 1.8 : (isHovered ? 1.5 : 1.1))
+                  : (isSelected ? 3.6 : (isHovered ? 3.0 : 1.4)))
             : (isSelected ? 2.8 : (isHovered ? 2.2 : 1.1));
 
       for (final path in province.paths) {
@@ -371,14 +500,28 @@ class _ProvinceMapPainter extends CustomPainter {
       }
 
       if ((isSelected || isHovered) && province.labelAnchor != null) {
-        _drawProvinceLabel(
-          canvas,
-          province.labelAnchor!,
-          province.province.displayName,
-          baseColor,
-        );
+        final labelText = compareMode && isSelected
+            ? _compareLabelText(
+                province.province.id,
+                province.province.displayName,
+              )
+            : province.province.displayName;
+
+        _drawProvinceLabel(canvas, province.labelAnchor!, labelText, baseColor);
       }
     }
+  }
+
+  String _compareLabelText(String provinceId, String displayName) {
+    if (provinceId == firstCompareProvinceId) {
+      return '1. $displayName';
+    }
+
+    if (provinceId == secondCompareProvinceId) {
+      return '2. $displayName';
+    }
+
+    return displayName;
   }
 
   Color _fillColor({
@@ -386,12 +529,16 @@ class _ProvinceMapPainter extends CustomPainter {
     required bool isSelected,
     required bool isHovered,
     required bool isMatch,
+    required bool isRegionMatch,
   }) {
     if (isSelected) {
       return baseColor.withValues(alpha: 0.72);
     }
     if (isHovered) {
       return baseColor.withValues(alpha: 0.58);
+    }
+    if (!isRegionMatch) {
+      return baseColor.withValues(alpha: 0.10);
     }
     if (hasActiveFilter && !isMatch) {
       return baseColor.withValues(alpha: 0.18);
@@ -486,12 +633,8 @@ class _ProvinceMapPainter extends CustomPainter {
     }
 
     final center = province.bounds.center;
-    final haloRadius = isSelected
-        ? 22.0
-        : (isHovered ? 19.0 : 16.0);
-    final ringRadius = isSelected
-        ? 11.0
-        : (isHovered ? 9.5 : 8.0);
+    final haloRadius = isSelected ? 22.0 : (isHovered ? 19.0 : 16.0);
+    final ringRadius = isSelected ? 11.0 : (isHovered ? 9.5 : 8.0);
 
     final haloPaint = Paint()
       ..color = baseColor.withValues(alpha: isSelected ? 0.24 : 0.14)
@@ -540,7 +683,9 @@ class _ProvinceMapPainter extends CustomPainter {
     );
     final innerRegion = RRect.fromRectAndRadius(
       hoverRegion.deflate(4),
-      Radius.circular((hoverRegion.shortestSide * 0.18).clamp(8, 24).toDouble()),
+      Radius.circular(
+        (hoverRegion.shortestSide * 0.18).clamp(8, 24).toDouble(),
+      ),
     );
 
     canvas.drawRRect(region, borderPaint);
@@ -591,10 +736,15 @@ class _ProvinceMapPainter extends CustomPainter {
   bool shouldRepaint(covariant _ProvinceMapPainter oldDelegate) {
     return oldDelegate.scene != scene ||
         oldDelegate.selectedProvinceId != selectedProvinceId ||
+        oldDelegate.compareMode != compareMode ||
+        oldDelegate.firstCompareProvinceId != firstCompareProvinceId ||
+        oldDelegate.secondCompareProvinceId != secondCompareProvinceId ||
         oldDelegate.hoveredProvinceId != hoveredProvinceId ||
         oldDelegate.hasActiveFilter != hasActiveFilter ||
         oldDelegate.colorScheme != colorScheme ||
+        oldDelegate.selectedRegionFilter != selectedRegionFilter ||
         oldDelegate.matchingProvinceIds.length != matchingProvinceIds.length;
+
   }
 }
 
@@ -628,6 +778,145 @@ class _MapStatusBar extends StatelessWidget {
               ? 'Dang hien thi $matchCount/$totalCount khu vuc'
               : 'Da chon: ${selectedProvince!.displayName}',
           style: theme.textTheme.labelLarge,
+        ),
+      ),
+    );
+  }
+}
+
+class _FeaturedTravelOverlay extends StatelessWidget {
+  const _FeaturedTravelOverlay({
+    required this.scene,
+    required this.places,
+    required this.onOpenProvince,
+  });
+
+  final ProvinceMapScene scene;
+  final List<TourismDestinationModel> places;
+  final ValueChanged<ProvinceModel> onOpenProvince;
+
+  String _normalizeProvinceName(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('tỉnh ', '')
+        .replaceAll('thành phố ', '')
+        .trim();
+  }
+
+  TourismDestinationModel? _featuredPlaceForProvince(ProvinceModel province) {
+    final provinceName = _normalizeProvinceName(province.displayName);
+
+    for (final place in places) {
+      if (_normalizeProvinceName(place.province) == provinceName) {
+        return place;
+      }
+    }
+
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final markers = <Widget>[];
+
+    for (final renderProvince in scene.renderProvinces) {
+      final province = renderProvince.province;
+      final place = _featuredPlaceForProvince(province);
+
+      if (place == null) continue;
+      if (renderProvince.bounds == Rect.zero) continue;
+
+      final center = renderProvince.bounds.center;
+
+      markers.add(
+        Positioned(
+          left: center.dx - 18,
+          top: center.dy - 18,
+          child: _FeaturedTravelMarker(
+            province: province,
+            place: place,
+            onTap: () {
+              onOpenProvince(province);
+            },
+          ),
+        ),
+      );
+    }
+
+    return IgnorePointer(
+      ignoring: false,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: markers,
+      ),
+    );
+  }
+}
+
+class _FeaturedTravelMarker extends StatelessWidget {
+  const _FeaturedTravelMarker({
+    required this.province,
+    required this.place,
+    required this.onTap,
+  });
+
+  final ProvinceModel province;
+  final TourismDestinationModel place;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: '${place.name}\n${province.displayName}',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: onTap,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 190),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: Colors.teal.withValues(alpha: 0.65),
+                width: 1.4,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.16),
+                  blurRadius: 12,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircleAvatar(
+                  radius: 12,
+                  backgroundColor: Colors.teal,
+                  child: Icon(
+                    Icons.place_rounded,
+                    color: Colors.white,
+                    size: 15,
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    place.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -714,9 +1003,7 @@ class ProvinceMapScene {
           }
 
           final points = ring
-              .map(
-                (point) => projectMainland(point.longitude, point.latitude),
-              )
+              .map((point) => projectMainland(point.longitude, point.latitude))
               .toList(growable: false);
 
           path.moveTo(points.first.dx, points.first.dy);
@@ -764,8 +1051,14 @@ class ProvinceMapScene {
       padding - minProjectedY,
     );
     final canvasSize = Size(
-      math.max((maxProjectedX - minProjectedX) + (padding * 2), viewportSize.width),
-      math.max((maxProjectedY - minProjectedY) + (padding * 2), viewportSize.height),
+      math.max(
+        (maxProjectedX - minProjectedX) + (padding * 2),
+        viewportSize.width,
+      ),
+      math.max(
+        (maxProjectedY - minProjectedY) + (padding * 2),
+        viewportSize.height,
+      ),
     );
 
     final renderProvinces = <ProvinceRenderData>[];
@@ -786,7 +1079,8 @@ class ProvinceMapScene {
         labelAnchor: stagedProvince.bounds == Rect.zero
             ? null
             : Offset(shiftedBounds.center.dx, shiftedBounds.top + 14),
-        hoverRegion: stagedProvince.province.isDerivedArchipelago &&
+        hoverRegion:
+            stagedProvince.province.isDerivedArchipelago &&
                 stagedProvince.bounds != Rect.zero
             ? _buildArchipelagoHoverRegion(
                 stagedProvince.province,
@@ -812,13 +1106,15 @@ class ProvinceMapScene {
   ) {
     final horizontalPadding = province.isHoangSaArchipelago ? 46.0 : 58.0;
     final verticalPadding = province.isHoangSaArchipelago ? 34.0 : 42.0;
-    return bounds.inflate(0).expandToInclude(
-      Rect.fromCenter(
-        center: bounds.center,
-        width: math.max(bounds.width + horizontalPadding, 72),
-        height: math.max(bounds.height + verticalPadding, 64),
-      ),
-    );
+    return bounds
+        .inflate(0)
+        .expandToInclude(
+          Rect.fromCenter(
+            center: bounds.center,
+            width: math.max(bounds.width + horizontalPadding, 72),
+            height: math.max(bounds.height + verticalPadding, 64),
+          ),
+        );
   }
 }
 

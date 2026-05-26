@@ -47,27 +47,36 @@ final provinceSearchQueryProvider = StateProvider<String>((ref) => '');
 
 final filteredProvincesProvider = Provider<List<ProvinceModel>>((ref) {
   final provinces = ref.watch(provincesProvider).valueOrNull ?? const [];
+  final selectedRegion = ref.watch(selectedRegionFilterProvider);
+
   final query = TextNormalizer.normalizeVietnamese(
     ref.watch(provinceSearchQueryProvider),
   );
 
   final filtered = provinces
       .where((province) {
-        if (query.isEmpty) {
-          return true;
-        }
+    final matchesRegion =
+        selectedRegion == null || province.macroRegion == selectedRegion;
 
-        final haystacks = [
-          province.displayName,
-          province.name,
-          province.shortName,
-          province.type,
-          province.capital ?? '',
-          province.macroRegion,
-        ].map(TextNormalizer.normalizeVietnamese);
+    if (!matchesRegion) {
+      return false;
+    }
 
-        return haystacks.any((value) => value.contains(query));
-      })
+    if (query.isEmpty) {
+      return true;
+    }
+
+    final haystacks = [
+      province.displayName,
+      province.name,
+      province.shortName,
+      province.type,
+      province.capital ?? '',
+      province.macroRegion,
+    ].map(TextNormalizer.normalizeVietnamese);
+
+    return haystacks.any((value) => value.contains(query));
+  })
       .toList(growable: false);
 
   filtered.sort((a, b) => a.displayName.compareTo(b.displayName));
@@ -139,3 +148,39 @@ bool _matchesProvince({
 
   return candidates.contains(tourismKey);
 }
+
+final compareModeProvider = StateProvider<bool>((ref) => false);
+
+final firstCompareProvinceIdProvider = StateProvider<String?>((ref) => null);
+
+final secondCompareProvinceIdProvider = StateProvider<String?>((ref) => null);
+
+final firstCompareProvinceProvider = Provider<ProvinceModel?>((ref) {
+  final id = ref.watch(firstCompareProvinceIdProvider);
+  final provinces = ref.watch(provincesProvider).valueOrNull ?? [];
+
+  if (id == null) return null;
+
+  for (final province in provinces) {
+    if (province.id == id) return province;
+  }
+
+  return null;
+});
+
+final secondCompareProvinceProvider = Provider<ProvinceModel?>((ref) {
+  final id = ref.watch(secondCompareProvinceIdProvider);
+  final provinces = ref.watch(provincesProvider).valueOrNull ?? [];
+
+  if (id == null) return null;
+
+  for (final province in provinces) {
+    if (province.id == id) return province;
+  }
+
+  return null;
+});
+
+final selectedRegionFilterProvider = StateProvider<String?>((ref) => null);
+
+final featuredTravelModeProvider = StateProvider<bool>((ref) => false);
