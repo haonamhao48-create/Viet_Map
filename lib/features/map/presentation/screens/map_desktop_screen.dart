@@ -20,8 +20,12 @@ class MapDesktopScreen extends StatelessWidget {
             body: SafeArea(
               child: Row(
                 children: [
-                  SizedBox(width: 320, child: MapExplorerPanel()),
+                  SizedBox(
+                    width: 320,
+                    child: MapExplorerPanel(showSelectionCard: false),
+                  ),
                   Expanded(child: ProvinceMapCanvas()),
+                  SizedBox(width: 360, child: MapSelectionDetailsPanel()),
                 ],
               ),
             ),
@@ -33,8 +37,18 @@ class MapDesktopScreen extends StatelessWidget {
             body: SafeArea(
               child: Row(
                 children: [
-                  SizedBox(width: 280, child: MapExplorerPanel(compact: true)),
+                  SizedBox(
+                    width: 280,
+                    child: MapExplorerPanel(
+                      compact: true,
+                      showSelectionCard: false,
+                    ),
+                  ),
                   Expanded(child: ProvinceMapCanvas()),
+                  SizedBox(
+                    width: 320,
+                    child: MapSelectionDetailsPanel(compact: true),
+                  ),
                 ],
               ),
             ),
