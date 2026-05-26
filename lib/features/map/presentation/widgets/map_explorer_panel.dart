@@ -12,12 +12,14 @@ class MapExplorerPanel extends ConsumerStatefulWidget {
     this.compact = false,
     this.embedded = false,
     this.mobileOverlay = false,
+    this.showSelectionCard = true,
     this.scrollController,
   });
 
   final bool compact;
   final bool embedded;
   final bool mobileOverlay;
+  final bool showSelectionCard;
   final ScrollController? scrollController;
 
   @override
@@ -125,7 +127,7 @@ class _MapExplorerPanelState extends ConsumerState<MapExplorerPanel> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  if (selectedProvince != null) ...[
+                  if (widget.showSelectionCard && selectedProvince != null) ...[
                     _SelectedProvinceCard(province: selectedProvince),
                     const SizedBox(height: 16),
                   ],
@@ -179,6 +181,44 @@ class _MapExplorerPanelState extends ConsumerState<MapExplorerPanel> {
                 padding: const EdgeInsets.all(20),
                 child: Text('Không thể đọc dữ liệu: $error'),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class MapSelectionDetailsPanel extends ConsumerWidget {
+  const MapSelectionDetailsPanel({
+    super.key,
+    this.compact = false,
+  });
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedProvince = ref.watch(selectedProvinceProvider);
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLowest,
+        border: Border(
+          left: BorderSide(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, compact ? 18 : 22, 20, 20),
+              child: selectedProvince == null
+                  ? _EmptySelectionState(compact: compact)
+                  : _SelectedProvinceCard(province: selectedProvince),
             ),
           ),
         ],
@@ -484,6 +524,74 @@ class _SelectedProvinceCard extends ConsumerWidget {
               'Không thể đọc dữ liệu du lịch: $error',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.error,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptySelectionState extends StatelessWidget {
+  const _EmptySelectionState({required this.compact});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: EdgeInsets.all(compact ? 18 : 22),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Thông tin khu vực',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Bấm vào một tỉnh hoặc thành phố trên bản đồ để xem thông tin chi tiết và các địa điểm du lịch nổi bật ở đây.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 18),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.45,
+              ),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.touch_app_rounded,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Chọn một khu vực để mở thẻ thông tin bên phải.',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

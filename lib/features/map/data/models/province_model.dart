@@ -1,3 +1,4 @@
+import '../../../../core/utils/text_normalizer.dart';
 import 'geo_point.dart';
 import 'province_polygon.dart';
 
@@ -69,12 +70,20 @@ class ProvinceModel {
     return name;
   }
 
+  String get normalizedDisplayName {
+    return TextNormalizer.normalizeVietnamese(displayName);
+  }
+
+  bool get isHoangSaArchipelago {
+    return normalizedDisplayName.contains('hoang sa');
+  }
+
+  bool get isTruongSaArchipelago {
+    return normalizedDisplayName.contains('truong sa');
+  }
+
   bool get isDerivedArchipelago {
-    return isArchipelago ||
-        displayName.contains('Hoàng Sa') ||
-        displayName.contains('Trường Sa') ||
-        displayName.contains('Hoang Sa') ||
-        displayName.contains('Truong Sa');
+    return isArchipelago || isHoangSaArchipelago || isTruongSaArchipelago;
   }
 
   static List<ProvincePolygon> _parsePolygons(Map<String, dynamic> geometry) {
