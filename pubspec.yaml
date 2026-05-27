@@ -25,4 +25,5 @@ flutter:
 
   assets:
     - assets/geo/
+    - assets/geo/provinces/
     - assets/data/
