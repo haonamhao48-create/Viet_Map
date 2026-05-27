@@ -17,7 +17,6 @@ class ProvinceModel {
   final String? capital;
   final String? predecessors;
   final bool isArchipelago;
-  final Map<String, dynamic> geometry;
   final List<ProvincePolygon> polygons;
 
   ProvinceModel({
@@ -33,33 +32,28 @@ class ProvinceModel {
     required this.centroidLon,
     required this.centroidLat,
     required this.isArchipelago,
-    required this.geometry,
     required this.polygons,
     this.capital,
     this.predecessors,
   });
 
-  factory ProvinceModel.fromGeoJsonFeature(Map<String, dynamic> feature) {
-    final properties = feature['properties'] as Map<String, dynamic>;
-    final geometry = feature['geometry'] as Map<String, dynamic>;
-
+  factory ProvinceModel.fromCompactJsonRow(List<dynamic> row) {
     return ProvinceModel(
-      id: properties['id']?.toString() ?? '',
-      name: properties['ten']?.toString() ?? '',
-      type: properties['type']?.toString() ?? '',
-      shortName: properties['ten_short']?.toString() ?? '',
-      shapeName: properties['shapeName']?.toString() ?? '',
-      macroRegion: properties['macro_region']?.toString() ?? '',
-      areaKm2: _toDouble(properties['area_km2']),
-      population: _toInt(properties['population']),
-      density: _toDouble(properties['density']),
-      centroidLon: _toDouble(properties['centroid_lon']),
-      centroidLat: _toDouble(properties['centroid_lat']),
-      capital: properties['capital']?.toString(),
-      predecessors: properties['predecessors']?.toString(),
-      isArchipelago: properties['is_archipelago'] == true,
-      geometry: geometry,
-      polygons: _parsePolygons(geometry),
+      id: _stringAt(row, 0),
+      name: _stringAt(row, 1),
+      type: _stringAt(row, 2),
+      shortName: _stringAt(row, 3),
+      shapeName: _stringAt(row, 4),
+      macroRegion: _stringAt(row, 5),
+      areaKm2: _toDouble(_valueAt(row, 6)),
+      population: _toInt(_valueAt(row, 7)),
+      density: _toDouble(_valueAt(row, 8)),
+      centroidLon: _toDouble(_valueAt(row, 9)),
+      centroidLat: _toDouble(_valueAt(row, 10)),
+      capital: _nullableStringAt(row, 11),
+      predecessors: _nullableStringAt(row, 12),
+      isArchipelago: _valueAt(row, 13) == true,
+      polygons: _parseCompactPolygons(_valueAt(row, 14)),
     );
   }
 
@@ -70,9 +64,9 @@ class ProvinceModel {
     return name;
   }
 
-  String get normalizedDisplayName {
-    return TextNormalizer.normalizeVietnamese(displayName);
-  }
+  late final String normalizedDisplayName = TextNormalizer.normalizeVietnamese(
+    displayName,
+  );
 
   bool get isHoangSaArchipelago {
     return normalizedDisplayName.contains('hoang sa');
@@ -86,25 +80,24 @@ class ProvinceModel {
     return isArchipelago || isHoangSaArchipelago || isTruongSaArchipelago;
   }
 
-  static List<ProvincePolygon> _parsePolygons(Map<String, dynamic> geometry) {
-    final type = geometry['type']?.toString() ?? '';
-    final coordinates = geometry['coordinates'];
+  late final String normalizedSearchText = TextNormalizer.normalizeVietnamese(
+    [displayName, name, shortName, type, capital ?? '', macroRegion].join(' '),
+  );
 
+  late final Set<String> normalizedProvinceKeys = {displayName, name, shortName}
+      .map(TextNormalizer.normalizeProvinceKey)
+      .where((value) => value.isNotEmpty)
+      .toSet();
+
+  static List<ProvincePolygon> _parseCompactPolygons(dynamic coordinates) {
     if (coordinates is! List) {
       return const [];
     }
 
-    switch (type) {
-      case 'Polygon':
-        return [_polygonFromCoordinates(coordinates)];
-      case 'MultiPolygon':
-        return coordinates
-            .whereType<List>()
-            .map(_polygonFromCoordinates)
-            .toList(growable: false);
-      default:
-        return const [];
-    }
+    return coordinates
+        .whereType<List>()
+        .map(_polygonFromCoordinates)
+        .toList(growable: false);
   }
 
   static ProvincePolygon _polygonFromCoordinates(List coordinates) {
@@ -133,6 +126,28 @@ class ProvinceModel {
     }
 
     return _toDouble(point[index]);
+  }
+
+  static dynamic _valueAt(List<dynamic> row, int index) {
+    if (index >= row.length) {
+      return null;
+    }
+
+    return row[index];
+  }
+
+  static String _stringAt(List<dynamic> row, int index) {
+    return _valueAt(row, index)?.toString() ?? '';
+  }
+
+  static String? _nullableStringAt(List<dynamic> row, int index) {
+    final value = _valueAt(row, index);
+    if (value == null) {
+      return null;
+    }
+
+    final stringValue = value.toString();
+    return stringValue.isEmpty ? null : stringValue;
   }
 
   static double _toDouble(dynamic value) {

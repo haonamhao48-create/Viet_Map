@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/province_model.dart';
+import '../../data/models/commune_model.dart';
 import '../../data/models/tourism_destination_model.dart';
 import '../providers/province_provider.dart';
 import '../screens/travel_places_screen.dart';
@@ -234,9 +235,11 @@ class MapSelectionDetailsPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedProvince = ref.watch(selectedProvinceProvider);
+    final selectedCommune = ref.watch(selectedCommuneProvider);
     final compareMode = ref.watch(compareModeProvider);
     final firstProvince = ref.watch(firstCompareProvinceProvider);
     final secondProvince = ref.watch(secondCompareProvinceProvider);
+    final communeMode = ref.watch(communeModeProvider);
     final theme = Theme.of(context);
 
     return Container(
@@ -258,8 +261,10 @@ class MapSelectionDetailsPanel extends ConsumerWidget {
                 firstProvince: firstProvince,
                 secondProvince: secondProvince,
               )
+                  : (selectedCommune != null && selectedProvince != null)
+                  ? _SelectedCommuneCard(commune: selectedCommune, province: selectedProvince)
                   : selectedProvince == null
-                  ? _EmptySelectionState(compact: compact)
+                  ? _EmptySelectionState(compact: compact, communeMode: communeMode)
                   : _SelectedProvinceCard(province: selectedProvince),
             ),
           ),
@@ -403,11 +408,13 @@ class _PanelHintRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final compareMode = ref.watch(compareModeProvider);
     final featuredTravelMode = ref.watch(featuredTravelModeProvider);
+    final communeMode = ref.watch(communeModeProvider);
 
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
+
         ActionChip(
           avatar: const Icon(Icons.compare_arrows_rounded, size: 18),
           label: Text(compareMode ? 'Tắt so sánh' : 'So sánh 2 tỉnh'),
@@ -421,6 +428,7 @@ class _PanelHintRow extends ConsumerWidget {
               ref.read(secondCompareProvinceIdProvider.notifier).state = null;
             } else {
               ref.read(selectedProvinceIdProvider.notifier).state = null;
+              ref.read(communeModeProvider.notifier).state = false;
             }
           },
         ),
@@ -441,6 +449,7 @@ class _PanelHintRow extends ConsumerWidget {
 
             if (nextMode) {
               ref.read(compareModeProvider.notifier).state = false;
+              ref.read(communeModeProvider.notifier).state = false;
               ref.read(firstCompareProvinceIdProvider.notifier).state = null;
               ref.read(secondCompareProvinceIdProvider.notifier).state = null;
               ref.read(selectedProvinceIdProvider.notifier).state = null;
@@ -523,7 +532,7 @@ class _SelectedProvinceCard extends ConsumerWidget {
             children: [
               _InfoPill(
                 label: 'Dân số',
-                value: _formatNumber(province.population),
+                value: '${_formatNumber(province.population)} người',
               ),
               _InfoPill(
                 label: 'Diện tích',
@@ -531,7 +540,7 @@ class _SelectedProvinceCard extends ConsumerWidget {
               ),
               _InfoPill(
                 label: 'Mật độ',
-                value: province.density.toStringAsFixed(0),
+                value: '${province.density.toStringAsFixed(0)} người/km²',
               ),
             ],
           ),
@@ -563,12 +572,32 @@ class _SelectedProvinceCard extends ConsumerWidget {
                   MaterialPageRoute(
                     builder: (_) => TravelPlacesScreen(
                       province: province,
+                      isCommuneMode: false,
                     ),
                   ),
                 );
               },
               icon: const Icon(Icons.travel_explore_rounded),
               label: const Text('Xem bản đồ phượt'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TravelPlacesScreen(
+                      province: province,
+                      isCommuneMode: true,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.map_outlined),
+              label: const Text('Xem chi tiết xã/phường'),
             ),
           ),
           const SizedBox(height: 18),
@@ -622,9 +651,10 @@ class _SelectedProvinceCard extends ConsumerWidget {
 }
 
 class _EmptySelectionState extends StatelessWidget {
-  const _EmptySelectionState({required this.compact});
+  const _EmptySelectionState({required this.compact, this.communeMode = false});
 
   final bool compact;
+  final bool communeMode;
 
   @override
   Widget build(BuildContext context) {
@@ -649,6 +679,29 @@ class _EmptySelectionState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
+          if (communeMode)
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: theme.colorScheme.onPrimaryContainer),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Bạn đang ở chế độ Chi tiết Xã/Phường. Vui lòng click chọn một tỉnh trên bản đồ hoặc trong danh sách bên dưới để xem.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Text(
             'Bấm vào một tỉnh hoặc thành phố trên bản đồ để xem thông tin chi tiết và các địa điểm du lịch nổi bật ở đây.',
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -1167,8 +1220,8 @@ class _ProvinceComparePanel extends StatelessWidget {
           ),
           _CompareRow(
             label: 'Dân số',
-            firstValue: _formatNumber(first.population),
-            secondValue: _formatNumber(second.population),
+            firstValue: '${_formatNumber(first.population)} người',
+            secondValue: '${_formatNumber(second.population)} người',
           ),
           _CompareRow(
             label: 'Diện tích',
@@ -1177,8 +1230,8 @@ class _ProvinceComparePanel extends StatelessWidget {
           ),
           _CompareRow(
             label: 'Mật độ',
-            firstValue: first.density.toStringAsFixed(0),
-            secondValue: second.density.toStringAsFixed(0),
+            firstValue: '${first.density.toStringAsFixed(0)} người/km²',
+            secondValue: '${second.density.toStringAsFixed(0)} người/km²',
           ),
           _CompareRow(
             label: 'Trung tâm',
@@ -1418,4 +1471,80 @@ String _formatNumber(int value) {
   }
 
   return buffer.toString();
+}
+class _SelectedCommuneCard extends ConsumerWidget {
+  const _SelectedCommuneCard({required this.commune, required this.province});
+
+  final CommuneModel commune;
+  final ProvinceModel province;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final accent = ProvinceRegionPalette.colorForRegion(province.macroRegion);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: accent.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  commune.name,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 20),
+                onPressed: () {
+                  ref.read(selectedCommuneIdProvider.notifier).state = null;
+                },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${commune.type} thuộc ${province.displayName}',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              if (commune.population > 0)
+                _InfoPill(
+                  label: 'Dân số',
+                  value: '${_formatNumber(commune.population.toInt())} người',
+                ),
+              if (commune.areaKm2 > 0)
+                _InfoPill(
+                  label: 'Diện tích',
+                  value: '${commune.areaKm2.toStringAsFixed(2)} km²',
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }

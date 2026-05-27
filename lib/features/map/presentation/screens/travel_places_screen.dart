@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -12,9 +13,11 @@ class TravelPlacesScreen extends StatefulWidget {
   const TravelPlacesScreen({
     super.key,
     required this.province,
+    this.isCommuneMode = false,
   });
 
   final ProvinceModel province;
+  final bool isCommuneMode;
 
   @override
   State<TravelPlacesScreen> createState() => _TravelPlacesScreenState();
@@ -22,6 +25,8 @@ class TravelPlacesScreen extends StatefulWidget {
 
 class _TravelPlacesScreenState extends State<TravelPlacesScreen> {
   late final Future<_TravelMapData> _mapDataFuture;
+
+  static final Map<String, List<_CommuneArea>> _parsedCommunesCache = {};
 
   @override
   void initState() {
@@ -51,18 +56,29 @@ class _TravelPlacesScreenState extends State<TravelPlacesScreen> {
   }
 
   Future<List<_CommuneArea>> _loadCommunes() async {
-    final rawString = await rootBundle.loadString(
-      'assets/geo/communes.geojson',
-    );
+    final selectedProvince = _normalizeProvinceName(widget.province.displayName);
+    
+    if (_parsedCommunesCache.containsKey(selectedProvince)) {
+      return _parsedCommunesCache[selectedProvince]!;
+    }
 
+    final assetPath = 'assets/geo/provinces/$selectedProvince.geojson';
+    
+    try {
+      final rawString = await rootBundle.loadString(assetPath);
+      final parsed = await compute(_parseCommunesIsolate, rawString);
+      _parsedCommunesCache[selectedProvince] = parsed;
+      return parsed;
+    } catch (e) {
+      debugPrint('Không tìm thấy dữ liệu xã/phường cho ${widget.province.displayName}: $e');
+      return [];
+    }
+  }
+
+  static List<_CommuneArea> _parseCommunesIsolate(String rawString) {
     final fixedString = rawString.replaceAll(': NaN', ': null');
-
     final geoJson = jsonDecode(fixedString) as Map<String, dynamic>;
     final features = geoJson['features'] as List<dynamic>;
-
-    final selectedProvince = _normalizeProvinceName(
-      widget.province.displayName,
-    );
 
     final result = <_CommuneArea>[];
 
@@ -70,13 +86,6 @@ class _TravelPlacesScreenState extends State<TravelPlacesScreen> {
       final item = feature as Map<String, dynamic>;
       final properties = item['properties'] as Map<String, dynamic>;
       final geometry = item['geometry'] as Map<String, dynamic>;
-
-      final parentName = properties['parent_ten']?.toString() ?? '';
-      final normalizedParentName = _normalizeProvinceName(parentName);
-
-      if (normalizedParentName != selectedProvince) {
-        continue;
-      }
 
       final communeName =
           properties['ten']?.toString() ??
@@ -110,11 +119,10 @@ class _TravelPlacesScreenState extends State<TravelPlacesScreen> {
         ),
       );
     }
-
     return result;
   }
 
-  List<List<_MapPoint>> _parsePolygon(List<dynamic> polygon) {
+  static List<List<_MapPoint>> _parsePolygon(List<dynamic> polygon) {
     final polygonRings = <List<_MapPoint>>[];
 
     for (final ring in polygon) {
@@ -137,12 +145,92 @@ class _TravelPlacesScreenState extends State<TravelPlacesScreen> {
     return polygonRings;
   }
 
+  static const Map<String, String> _provinceFileMap = {
+    // Special names that don't normalize cleanly
+    'thủ đô hà nội': 'thu-do-ha-noi',
+    'hà nội': 'thu-do-ha-noi',
+    'hồ chí minh': 'ho-chi-minh',
+    'thành phố hồ chí minh': 'ho-chi-minh',
+    'đà nẵng': 'da-nang',
+    'thành phố đà nẵng': 'da-nang',
+    'cần thơ': 'can-tho',
+    'thành phố cần thơ': 'can-tho',
+    'hải phòng': 'hai-phong',
+    'thành phố hải phòng': 'hai-phong',
+    'huế': 'hue',
+    'tỉnh huế': 'hue',
+    'thừa thiên huế': 'hue',
+    'bắc ninh': 'bac-ninh',
+    'bắc kạn': 'bac-ninh',
+    'cà mau': 'ca-mau',
+    'cao bằng': 'cao-bang',
+    'đắk lắk': 'dak-lak',
+    'điện biên': 'dien-bien',
+    'đồng nai': 'dong-nai',
+    'đồng tháp': 'dong-thap',
+    'gia lai': 'gia-lai',
+    'hà tĩnh': 'ha-tinh',
+    'khánh hòa': 'khanh-hoa',
+    'lai châu': 'lai-chau',
+    'lâm đồng': 'lam-dong',
+    'lạng sơn': 'lang-son',
+    'lào cai': 'lao-cai',
+    'nghệ an': 'nghe-an',
+    'ninh bình': 'ninh-binh',
+    'phú thọ': 'phu-tho',
+    'quảng ngãi': 'quang-ngai',
+    'quảng ninh': 'quang-ninh',
+    'quảng trị': 'quang-tri',
+    'sơn la': 'son-la',
+    'tây ninh': 'tay-ninh',
+    'thái nguyên': 'thai-nguyen',
+    'thanh hóa': 'thanh-hoa',
+    'tuyên quang': 'tuyen-quang',
+    'vĩnh long': 'vinh-long',
+    'an giang': 'an-giang',
+    'hưng yên': 'hung-yen',
+  };
+
   String _normalizeProvinceName(String value) {
-    return value
-        .toLowerCase()
-        .replaceAll('tỉnh ', '')
+    final lower = value.toLowerCase().trim();
+
+    // Check exact mapping first
+    if (_provinceFileMap.containsKey(lower)) {
+      return _provinceFileMap[lower]!;
+    }
+
+    // Strip prefix and check again
+    String stripped = lower
         .replaceAll('thành phố ', '')
+        .replaceAll('tỉnh ', '')
+        .replaceAll('thủ đô ', '')
         .trim();
+
+    if (_provinceFileMap.containsKey(stripped)) {
+      return _provinceFileMap[stripped]!;
+    }
+
+    // Fallback: remove accents and hyphenate
+    const Map<String, String> accents = {
+      'á': 'a', 'à': 'a', 'ả': 'a', 'ã': 'a', 'ạ': 'a',
+      'ă': 'a', 'ắ': 'a', 'ằ': 'a', 'ẳ': 'a', 'ẵ': 'a', 'ặ': 'a',
+      'â': 'a', 'ấ': 'a', 'ầ': 'a', 'ẩ': 'a', 'ẫ': 'a', 'ậ': 'a',
+      'đ': 'd',
+      'é': 'e', 'è': 'e', 'ẻ': 'e', 'ẽ': 'e', 'ẹ': 'e',
+      'ê': 'e', 'ế': 'e', 'ề': 'e', 'ể': 'e', 'ễ': 'e', 'ệ': 'e',
+      'í': 'i', 'ì': 'i', 'ỉ': 'i', 'ĩ': 'i', 'ị': 'i',
+      'ó': 'o', 'ò': 'o', 'ỏ': 'o', 'õ': 'o', 'ọ': 'o',
+      'ô': 'o', 'ố': 'o', 'ồ': 'o', 'ổ': 'o', 'ỗ': 'o', 'ộ': 'o',
+      'ơ': 'o', 'ớ': 'o', 'ờ': 'o', 'ở': 'o', 'ỡ': 'o', 'ợ': 'o',
+      'ú': 'u', 'ù': 'u', 'ủ': 'u', 'ũ': 'u', 'ụ': 'u',
+      'ư': 'u', 'ứ': 'u', 'ừ': 'u', 'ử': 'u', 'ữ': 'u', 'ự': 'u',
+      'ý': 'y', 'ỳ': 'y', 'ỷ': 'y', 'ỹ': 'y', 'ỵ': 'y',
+    };
+    String s = stripped;
+    accents.forEach((key, v) {
+      s = s.replaceAll(key, v);
+    });
+    return s.replaceAll(RegExp(r'\s+'), '-');
   }
 
   @override
@@ -150,7 +238,7 @@ class _TravelPlacesScreenState extends State<TravelPlacesScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFEFF9F8),
       appBar: AppBar(
-        title: Text('Bản đồ phượt ${widget.province.displayName}'),
+        title: Text(widget.isCommuneMode ? 'Bản đồ xã/phường ${widget.province.displayName}' : 'Bản đồ phượt ${widget.province.displayName}'),
         backgroundColor: Colors.white,
         elevation: 0,
       ),
@@ -183,6 +271,7 @@ class _TravelPlacesScreenState extends State<TravelPlacesScreen> {
             province: widget.province,
             places: places,
             communes: communes,
+            isCommuneMode: widget.isCommuneMode,
           );
         },
       ),
@@ -192,14 +281,17 @@ class _TravelPlacesScreenState extends State<TravelPlacesScreen> {
 
 class _ProvinceTravelMap extends StatefulWidget {
   const _ProvinceTravelMap({
+    super.key,
     required this.province,
     required this.places,
     required this.communes,
+    required this.isCommuneMode,
   });
 
   final ProvinceModel province;
   final List<TourismDestinationModel> places;
   final List<_CommuneArea> communes;
+  final bool isCommuneMode; // added
 
   @override
   State<_ProvinceTravelMap> createState() => _ProvinceTravelMapState();
@@ -274,20 +366,28 @@ class _ProvinceTravelMapState extends State<_ProvinceTravelMap> {
             children: [
               SizedBox(
                 width: 360,
-                child: _PlacesSidePanel(
-                  province: widget.province,
-                  places: visiblePlaces,
-                  selectedPlace: _selectedPlace,
-                  routePlaces: _routePlaces,
-                  onPlaceSelected: _selectPlace,
-                  onRouteToggle: _toggleRoutePlace,
-                ),
+                child: widget.isCommuneMode
+                    ? _CommunesSidePanel(
+                        province: widget.province,
+                        communes: widget.communes,
+                        selectedCommune: _selectedCommune,
+                        onCommuneSelected: _selectCommune,
+                      )
+                    : _PlacesSidePanel(
+                        province: widget.province,
+                        places: visiblePlaces,
+                        selectedPlace: _selectedPlace,
+                        routePlaces: _routePlaces,
+                        onPlaceSelected: _selectPlace,
+                        onRouteToggle: _toggleRoutePlace,
+                      ),
               ),
               Expanded(
                 child: _TravelMapView(
                   province: widget.province,
-                  places: visiblePlaces,
+                  places: widget.isCommuneMode ? [] : visiblePlaces,
                   communes: widget.communes,
+                  isCommuneMode: widget.isCommuneMode,
                   selectedPlace: _selectedPlace,
                   selectedCommune: _selectedCommune,
                   routePlaces: _routePlaces,
@@ -302,21 +402,34 @@ class _ProvinceTravelMapState extends State<_ProvinceTravelMap> {
                   },
                 ),
               ),
-              SizedBox(
-                width: 360,
-                child: _SelectedPlaceDetailPanel(
-                  place: _selectedPlace,
-                  isInRoute: _selectedPlace == null
-                      ? false
-                      : _isInRoute(_selectedPlace!),
-                  routePlaces: _routePlaces,
-                  onRouteToggle: _selectedPlace == null
-                      ? null
-                      : () => _toggleRoutePlace(_selectedPlace!),
-                  onRemoveRoutePlace: _removeRoutePlace,
-                  onClearRoute: _clearRoute,
+              if (widget.isCommuneMode)
+                SizedBox(
+                  width: 360,
+                  child: _selectedCommune == null
+                      ? Container(
+                          color: Colors.white,
+                          child: const Center(
+                            child: Text('Chọn một xã/phường để xem chi tiết'),
+                          ),
+                        )
+                      : _CommuneDetail(commune: _selectedCommune!),
+                )
+              else
+                SizedBox(
+                  width: 360,
+                  child: _SelectedPlaceDetailPanel(
+                    place: _selectedPlace,
+                    isInRoute: _selectedPlace == null
+                        ? false
+                        : _isInRoute(_selectedPlace!),
+                    routePlaces: _routePlaces,
+                    onRouteToggle: _selectedPlace == null
+                        ? null
+                        : () => _toggleRoutePlace(_selectedPlace!),
+                    onRemoveRoutePlace: _removeRoutePlace,
+                    onClearRoute: _clearRoute,
+                  ),
                 ),
-              ),
             ],
           );
         }
@@ -326,8 +439,9 @@ class _ProvinceTravelMapState extends State<_ProvinceTravelMap> {
             Expanded(
               child: _TravelMapView(
                 province: widget.province,
-                places: visiblePlaces,
+                places: widget.isCommuneMode ? [] : visiblePlaces,
                 communes: widget.communes,
+                isCommuneMode: widget.isCommuneMode,
                 selectedPlace: _selectedPlace,
                 selectedCommune: _selectedCommune,
                 routePlaces: _routePlaces,
@@ -344,14 +458,21 @@ class _ProvinceTravelMapState extends State<_ProvinceTravelMap> {
             ),
             SizedBox(
               height: 260,
-              child: _PlacesSidePanel(
-                province: widget.province,
-                places: visiblePlaces,
-                selectedPlace: _selectedPlace,
-                routePlaces: _routePlaces,
-                onPlaceSelected: _selectPlace,
-                onRouteToggle: _toggleRoutePlace,
-              ),
+              child: widget.isCommuneMode
+                  ? _CommunesSidePanel(
+                      province: widget.province,
+                      communes: widget.communes,
+                      selectedCommune: _selectedCommune,
+                      onCommuneSelected: _selectCommune,
+                    )
+                  : _PlacesSidePanel(
+                      province: widget.province,
+                      places: visiblePlaces,
+                      selectedPlace: _selectedPlace,
+                      routePlaces: _routePlaces,
+                      onPlaceSelected: _selectPlace,
+                      onRouteToggle: _toggleRoutePlace,
+                    ),
             ),
           ],
         );
@@ -360,11 +481,13 @@ class _ProvinceTravelMapState extends State<_ProvinceTravelMap> {
   }
 }
 
-class _TravelMapView extends StatelessWidget {
+class _TravelMapView extends StatefulWidget {
   const _TravelMapView({
+    super.key,
     required this.province,
     required this.places,
     required this.communes,
+    required this.isCommuneMode,
     required this.selectedPlace,
     required this.selectedCommune,
     required this.routePlaces,
@@ -378,6 +501,7 @@ class _TravelMapView extends StatelessWidget {
   final ProvinceModel province;
   final List<TourismDestinationModel> places;
   final List<_CommuneArea> communes;
+  final bool isCommuneMode;
   final TourismDestinationModel? selectedPlace;
   final ValueChanged<TourismDestinationModel> onPlaceSelected;
   final List<TourismDestinationModel> routePlaces;
@@ -387,179 +511,181 @@ class _TravelMapView extends StatelessWidget {
   final bool showPlacesOnMap;
   final VoidCallback onTogglePlacesOnMap;
 
-  _CommuneArea? _communeAtPosition({
-    required Offset position,
-    required BoxConstraints constraints,
-    required List<_CommuneArea> communes,
-  }) {
-    final allPoints = <_MapPoint>[];
+  @override
+  State<_TravelMapView> createState() => _TravelMapViewState();
+}
 
-    for (final commune in communes) {
-      for (final polygon in commune.polygons) {
-        for (final ring in polygon) {
-          allPoints.addAll(ring);
-        }
-      }
-    }
+class _TravelMapViewState extends State<_TravelMapView> {
+  Size? _lastSize;
+  _MapProjection? _projection;
+  Map<String, Path> _scaledCommunePaths = {};
+  Path _scaledProvincePath = Path();
+  Rect? _combinedBounds;
+  
+  double _minLon = 0;
+  double _maxLon = 0;
+  double _minLat = 0;
+  double _maxLat = 0;
+  double _lonRange = 1;
+  double _latRange = 1;
 
-    if (allPoints.isEmpty) return null;
+  static final Map<String, Map<String, dynamic>> _pathsCache = {};
 
-    double minLon = double.infinity;
-    double maxLon = double.negativeInfinity;
-    double minLat = double.infinity;
-    double maxLat = double.negativeInfinity;
-
-    for (final point in allPoints) {
-      minLon = math.min(minLon, point.longitude);
-      maxLon = math.max(maxLon, point.longitude);
-      minLat = math.min(minLat, point.latitude);
-      maxLat = math.max(maxLat, point.latitude);
-    }
-
-    final lonRange = math.max(maxLon - minLon, 0.01);
-    final latRange = math.max(maxLat - minLat, 0.01);
-
-    final size = Size(
-      constraints.maxWidth,
-      constraints.maxHeight,
-    );
-
-    final padding = math.min(size.width, size.height) * 0.14;
-    final usableWidth = size.width - padding * 2;
-    final usableHeight = size.height - padding * 2;
-
-    final scale = math.min(
-      usableWidth / lonRange,
-      usableHeight / latRange,
-    );
-
-    final mapWidth = lonRange * scale;
-    final mapHeight = latRange * scale;
-
-    final offsetX = (size.width - mapWidth) / 2;
-    final offsetY = (size.height - mapHeight) / 2;
-
-    Offset project(_MapPoint point) {
-      final x = offsetX + ((point.longitude - minLon) * scale);
-      final y = offsetY + ((maxLat - point.latitude) * scale);
-      return Offset(x, y);
-    }
-
-    for (final commune in communes.reversed) {
-      for (final polygon in commune.polygons) {
-        final path = Path()..fillType = PathFillType.evenOdd;
-
-        for (final ring in polygon) {
-          if (ring.length < 3) continue;
-
-          final first = project(ring.first);
-          path.moveTo(first.dx, first.dy);
-
-          for (final point in ring.skip(1)) {
-            final projected = project(point);
-            path.lineTo(projected.dx, projected.dy);
-          }
-
-          path.close();
-        }
-
-        if (path.contains(position)) {
-          return commune;
-        }
-      }
-    }
-
-    return null;
+  final List<Offset> _bubblePositions = const [
+    Offset(0.2, 0.2), Offset(0.3, 0.7), Offset(0.7, 0.3),
+    Offset(0.8, 0.8), Offset(0.5, 0.2), Offset(0.8, 0.5),
+    Offset(0.2, 0.8), Offset(0.5, 0.8), Offset(0.2, 0.5),
+    Offset(0.9, 0.2),
+  ];
+  
+  @override
+  void initState() {
+    super.initState();
+    _calculateBounds();
   }
-
-  _MapProjection? _createProjection({
-    required BoxConstraints constraints,
-    required List<_CommuneArea> communes,
-  }) {
-    final allPoints = <_MapPoint>[];
-
-    for (final commune in communes) {
+  
+  @override
+  void didUpdateWidget(_TravelMapView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.communes != oldWidget.communes) {
+      _calculateBounds();
+      _lastSize = null; // force rebuild paths
+    }
+  }
+  
+  void _calculateBounds() {
+    if (widget.communes.isEmpty) return;
+    
+    _minLon = double.infinity;
+    _maxLon = double.negativeInfinity;
+    _minLat = double.infinity;
+    _maxLat = double.negativeInfinity;
+    
+    for (final commune in widget.communes) {
       for (final polygon in commune.polygons) {
         for (final ring in polygon) {
-          allPoints.addAll(ring);
+          for (final point in ring) {
+             _minLon = math.min(_minLon, point.longitude);
+             _maxLon = math.max(_maxLon, point.longitude);
+             _minLat = math.min(_minLat, point.latitude);
+             _maxLat = math.max(_maxLat, point.latitude);
+          }
         }
       }
     }
-
-    if (allPoints.isEmpty) return null;
-
-    double minLon = double.infinity;
-    double maxLon = double.negativeInfinity;
-    double minLat = double.infinity;
-    double maxLat = double.negativeInfinity;
-
-    for (final point in allPoints) {
-      minLon = math.min(minLon, point.longitude);
-      maxLon = math.max(maxLon, point.longitude);
-      minLat = math.min(minLat, point.latitude);
-      maxLat = math.max(maxLat, point.latitude);
+    _lonRange = math.max(_maxLon - _minLon, 0.01);
+    _latRange = math.max(_maxLat - _minLat, 0.01);
+  }
+  
+  void _buildPathsIfNeeded(Size size) {
+    if (_lastSize == size) return;
+    
+    final cacheKey = '${widget.province.displayName}_${size.width}x${size.height}';
+    if (_pathsCache.containsKey(cacheKey)) {
+      final cached = _pathsCache[cacheKey]!;
+      _scaledCommunePaths = cached['communePaths'];
+      _scaledProvincePath = cached['provincePath'];
+      _combinedBounds = cached['bounds'];
+      _projection = cached['projection'];
+      _lastSize = size;
+      return;
     }
-
-    final lonRange = math.max(maxLon - minLon, 0.01);
-    final latRange = math.max(maxLat - minLat, 0.01);
-
-    final size = Size(
-      constraints.maxWidth,
-      constraints.maxHeight,
-    );
-
+    
+    _scaledCommunePaths.clear();
+    _scaledProvincePath = Path()..fillType = PathFillType.evenOdd;
+    _combinedBounds = null;
+    
+    if (widget.communes.isEmpty || size.width == 0 || size.height == 0) return;
+    
     final padding = math.min(size.width, size.height) * 0.14;
     final usableWidth = size.width - padding * 2;
     final usableHeight = size.height - padding * 2;
 
     final scale = math.min(
-      usableWidth / lonRange,
-      usableHeight / latRange,
+      usableWidth / _lonRange,
+      usableHeight / _latRange,
     );
 
-    final mapWidth = lonRange * scale;
-    final mapHeight = latRange * scale;
+    final mapWidth = _lonRange * scale;
+    final mapHeight = _latRange * scale;
 
     final offsetX = (size.width - mapWidth) / 2;
     final offsetY = (size.height - mapHeight) / 2;
-
-    return _MapProjection(
-      minLon: minLon,
-      maxLat: maxLat,
+    
+    _projection = _MapProjection(
+      minLon: _minLon,
+      maxLat: _maxLat,
       scale: scale,
       offsetX: offsetX,
       offsetY: offsetY,
     );
+    
+    for (final commune in widget.communes) {
+      final path = Path()..fillType = PathFillType.evenOdd;
+      
+      for (final polygon in commune.polygons) {
+        for (final ring in polygon) {
+          if (ring.isEmpty) continue;
+          
+          final first = _projection!.project(ring.first);
+          path.moveTo(first.dx, first.dy);
+          _scaledProvincePath.moveTo(first.dx, first.dy);
+          
+          for (final point in ring.skip(1)) {
+            final projected = _projection!.project(point);
+            path.lineTo(projected.dx, projected.dy);
+            _scaledProvincePath.lineTo(projected.dx, projected.dy);
+          }
+          
+          path.close();
+          _scaledProvincePath.close();
+        }
+      }
+      _scaledCommunePaths[commune.name] = path;
+      
+      final bounds = path.getBounds();
+      if (bounds != Rect.zero) {
+        _combinedBounds = _combinedBounds == null ? bounds : _combinedBounds!.expandToInclude(bounds);
+      }
+    }
+    
+    _pathsCache[cacheKey] = {
+      'communePaths': Map<String, Path>.from(_scaledCommunePaths),
+      'provincePath': _scaledProvincePath,
+      'bounds': _combinedBounds,
+      'projection': _projection,
+    };
+    
+    _lastSize = size;
+  }
+  
+  _CommuneArea? _communeAtPosition(Offset position) {
+    if (_lastSize == null) return null;
+    
+    for (final commune in widget.communes.reversed) {
+      final path = _scaledCommunePaths[commune.name];
+      if (path != null && path.contains(position)) {
+        return commune;
+      }
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final size = Size(constraints.maxWidth, constraints.maxHeight);
+        _buildPathsIfNeeded(size);
+        
         return GestureDetector(
             behavior: HitTestBehavior.translucent,
-            onTapUp: (details) {
-              final commune = _communeAtPosition(
-                position: details.localPosition,
-                constraints: constraints,
-                communes: communes,
-              );
-
+            onTapUp: widget.isCommuneMode ? (details) {
+              final commune = _communeAtPosition(details.localPosition);
               if (commune != null) {
-                onCommuneSelected(commune);
-
-                showModalBottomSheet(
-                  context: context,
-                  showDragHandle: true,
-                  builder: (_) {
-                    return Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: _CommuneDetail(commune: commune),
-                    );
-                  },
-                );
+                widget.onCommuneSelected(commune);
               }
-            },
+            } : null,
         child: Stack(
           children: [
             Positioned.fill(
@@ -570,17 +696,16 @@ class _TravelMapView extends StatelessWidget {
             Positioned.fill(
               child: CustomPaint(
                 painter: _DetailedProvincePainter(
-                  province: province,
-                  communes: communes,
-                  selectedCommuneName: selectedCommune?.name,
+                  province: widget.province,
+                  communes: widget.communes,
+                  isCommuneMode: widget.isCommuneMode,
+                  selectedCommuneName: widget.selectedCommune?.name,
+                  scaledCommunePaths: _scaledCommunePaths,
+                  scaledProvincePath: _scaledProvincePath,
+                  combinedBounds: _combinedBounds,
                 ),
               ),
             ),
-            // ..._buildCommuneLabelWidgets(
-            //   constraints: constraints,
-            //   communes: communes,
-            // ),
-
 
             Positioned(
               top: 16,
@@ -591,14 +716,14 @@ class _TravelMapView extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(999),
-                  onTap: onTogglePlacesOnMap,
+                  onTap: widget.onTogglePlacesOnMap,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          showPlacesOnMap
+                          widget.showPlacesOnMap
                               ? Icons.visibility_off_rounded
                               : Icons.visibility_rounded,
                           size: 18,
@@ -606,7 +731,7 @@ class _TravelMapView extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          showPlacesOnMap ? 'Ẩn địa điểm' : 'Hiện địa điểm',
+                          widget.showPlacesOnMap ? 'Ẩn địa điểm' : 'Hiện địa điểm',
                           style: const TextStyle(
                             color: Colors.teal,
                             fontWeight: FontWeight.w800,
@@ -619,12 +744,12 @@ class _TravelMapView extends StatelessWidget {
               ),
             ),
 
-            if (showPlacesOnMap)
-              ...List.generate(places.length, (index) {
-                final place = places[index];
+            if (widget.showPlacesOnMap && !widget.isCommuneMode)
+              ...List.generate(widget.places.length, (index) {
+                final place = widget.places[index];
 
-                final isSelected = selectedPlace?.name == place.name;
-                final isInRoute = routePlaces.any((item) => item.name == place.name);
+                final isSelected = widget.selectedPlace?.name == place.name;
+                final isInRoute = widget.routePlaces.any((item) => item.name == place.name);
 
                 Offset point;
 
@@ -632,13 +757,8 @@ class _TravelMapView extends StatelessWidget {
                     place.latitude != 0 &&
                         place.longitude != 0;
 
-                final projection = _createProjection(
-                  constraints: constraints,
-                  communes: communes,
-                );
-
-                if (hasValidLatLng && projection != null) {
-                  point = projection.project(
+                if (hasValidLatLng && _projection != null) {
+                  point = _projection!.project(
                     _MapPoint(
                       longitude: place.longitude,
                       latitude: place.latitude,
@@ -663,10 +783,10 @@ class _TravelMapView extends StatelessWidget {
                     isSelected: isSelected,
                     isInRoute: isInRoute,
                     onTap: () {
-                      onPlaceSelected(place);
+                      widget.onPlaceSelected(place);
                     },
                     onRouteToggle: () {
-                      onRouteToggle(place);
+                      widget.onRouteToggle(place);
                     },
                   ),
                 );
@@ -676,129 +796,6 @@ class _TravelMapView extends StatelessWidget {
         );
       },
     );
-  }
-
-  List<Widget> _buildCommuneLabelWidgets({
-    required BoxConstraints constraints,
-    required List<_CommuneArea> communes,
-  }) {
-    final allPoints = <_MapPoint>[];
-
-    for (final commune in communes) {
-      for (final polygon in commune.polygons) {
-        for (final ring in polygon) {
-          allPoints.addAll(ring);
-        }
-      }
-    }
-
-    if (allPoints.isEmpty) return [];
-
-    double minLon = double.infinity;
-    double maxLon = double.negativeInfinity;
-    double minLat = double.infinity;
-    double maxLat = double.negativeInfinity;
-
-    for (final point in allPoints) {
-      minLon = math.min(minLon, point.longitude);
-      maxLon = math.max(maxLon, point.longitude);
-      minLat = math.min(minLat, point.latitude);
-      maxLat = math.max(maxLat, point.latitude);
-    }
-
-    final lonRange = math.max(maxLon - minLon, 0.01);
-    final latRange = math.max(maxLat - minLat, 0.01);
-
-    final size = Size(
-      constraints.maxWidth,
-      constraints.maxHeight,
-    );
-
-    final padding = math.min(size.width, size.height) * 0.14;
-    final usableWidth = size.width - padding * 2;
-    final usableHeight = size.height - padding * 2;
-
-    final scale = math.min(
-      usableWidth / lonRange,
-      usableHeight / latRange,
-    );
-
-    final mapWidth = lonRange * scale;
-    final mapHeight = latRange * scale;
-
-    final offsetX = (size.width - mapWidth) / 2;
-    final offsetY = (size.height - mapHeight) / 2;
-
-    Offset project(_MapPoint point) {
-      final x = offsetX + ((point.longitude - minLon) * scale);
-      final y = offsetY + ((maxLat - point.latitude) * scale);
-      return Offset(x, y);
-    }
-
-    final labels = <Widget>[];
-
-    for (final commune in communes) {
-      Rect? bounds;
-
-      for (final polygon in commune.polygons) {
-        for (final ring in polygon) {
-          if (ring.length < 3) continue;
-
-          final points = ring.map(project).toList();
-
-          for (final point in points) {
-            final rect = Rect.fromCenter(
-              center: point,
-              width: 1,
-              height: 1,
-            );
-
-            bounds = bounds == null ? rect : bounds!.expandToInclude(rect);
-          }
-        }
-      }
-
-      if (bounds == null) continue;
-
-      final cleanName = commune.name
-          .replaceAll('Phường ', '')
-          .replaceAll('Xã ', '')
-          .replaceAll('Thị trấn ', '')
-          .trim();
-
-      if (cleanName.isEmpty) continue;
-
-      labels.add(
-        Positioned(
-          left: bounds!.center.dx - 45,
-          top: bounds!.center.dy - 12,
-          child: IgnorePointer(
-            child: Container(
-              width: 90,
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.yellow,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.red, width: 1),
-              ),
-              child: Text(
-                cleanName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.red,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return labels;
   }
 }
 
@@ -1209,166 +1206,82 @@ class _DetailedProvincePainter extends CustomPainter {
   const _DetailedProvincePainter({
     required this.province,
     required this.communes,
+    required this.isCommuneMode,
     required this.selectedCommuneName,
+    required this.scaledCommunePaths,
+    required this.scaledProvincePath,
+    required this.combinedBounds,
   });
 
   final ProvinceModel province;
   final List<_CommuneArea> communes;
+  final bool isCommuneMode;
   final String? selectedCommuneName;
+  final Map<String, Path> scaledCommunePaths;
+  final Path scaledProvincePath;
+  final Rect? combinedBounds;
+  
+  Color _colorForCommune(String communeName, Color provinceColor) {
+    final hash = communeName.hashCode;
+    final hue = (hash * 137.5) % 360.0;
+    return HSVColor.fromAHSV(1.0, hue, 0.45, 0.95).toColor();
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (communes.isEmpty) {
+    if (communes.isEmpty || scaledCommunePaths.isEmpty) {
       return;
     }
 
-    final allPoints = <_MapPoint>[];
-
-    for (final commune in communes) {
-      for (final polygon in commune.polygons) {
-        for (final ring in polygon) {
-          allPoints.addAll(ring);
-        }
-      }
-    }
-
-    if (allPoints.isEmpty) return;
-
-    double minLon = double.infinity;
-    double maxLon = double.negativeInfinity;
-    double minLat = double.infinity;
-    double maxLat = double.negativeInfinity;
-
-    for (final point in allPoints) {
-      minLon = math.min(minLon, point.longitude);
-      maxLon = math.max(maxLon, point.longitude);
-      minLat = math.min(minLat, point.latitude);
-      maxLat = math.max(maxLat, point.latitude);
-    }
-
-    final lonRange = math.max(maxLon - minLon, 0.01);
-    final latRange = math.max(maxLat - minLat, 0.01);
-
-    final padding = math.min(size.width, size.height) * 0.14;
-    final usableWidth = size.width - padding * 2;
-    final usableHeight = size.height - padding * 2;
-
-    final scale = math.min(
-      usableWidth / lonRange,
-      usableHeight / latRange,
-    );
-
-    final mapWidth = lonRange * scale;
-    final mapHeight = latRange * scale;
-
-    final offsetX = (size.width - mapWidth) / 2;
-    final offsetY = (size.height - mapHeight) / 2;
-
-    Offset project(_MapPoint point) {
-      final x = offsetX + ((point.longitude - minLon) * scale);
-      final y = offsetY + ((maxLat - point.latitude) * scale);
-      return Offset(x, y);
-    }
-
     final provinceColor = _colorForRegion(province.macroRegion);
+    
+    if (isCommuneMode) {
+      for (final commune in communes) {
+        final path = scaledCommunePaths[commune.name];
+        if (path == null) continue;
+        
+        final isSelectedCommune = commune.name == selectedCommuneName;
+        final communeColor = _colorForCommune(commune.name, provinceColor);
+        
+        final fillPaint = Paint()
+          ..color = isSelectedCommune
+              ? Colors.black.withValues(alpha: 0.70)
+              : communeColor.withValues(alpha: 0.65)
+          ..style = PaintingStyle.fill;
 
-    final fillPaint = Paint()
-      ..color = provinceColor.withValues(alpha: 0.52)
-      ..style = PaintingStyle.fill;
+        final borderPaint = Paint()
+          ..color = isSelectedCommune ? Colors.black : Colors.white.withValues(alpha: 0.95)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = isSelectedCommune ? 3 : 1.2;
 
-    final communeBorderPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.95)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
+        canvas.drawPath(path, fillPaint);
+        canvas.drawPath(path, borderPaint);
+      }
+    } else {
+      final fillPaint = Paint()
+        ..color = provinceColor.withValues(alpha: 0.52)
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(scaledProvincePath, fillPaint);
+    }
 
     final outerBorderPaint = Paint()
       ..color = provinceColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4;
-
-    Rect? combinedBounds;
-    final allCommunePath = Path()..fillType = PathFillType.evenOdd;
-
-    // final communeLabels = <_CommuneLabel>[];
-
-    for (final commune in communes) {
-      for (final polygon in commune.polygons) {
-        final path = Path()..fillType = PathFillType.evenOdd;
-
-        for (final ring in polygon) {
-          if (ring.length < 3) continue;
-
-          final first = project(ring.first);
-          path.moveTo(first.dx, first.dy);
-          allCommunePath.moveTo(first.dx, first.dy);
-
-          for (final point in ring.skip(1)) {
-            final projected = project(point);
-            path.lineTo(projected.dx, projected.dy);
-            allCommunePath.lineTo(projected.dx, projected.dy);
-          }
-
-          path.close();
-          allCommunePath.close();
-        }
-
-        final bounds = path.getBounds();
-
-        if (bounds == Rect.zero) continue;
-
-        combinedBounds = combinedBounds == null
-            ? bounds
-            : combinedBounds!.expandToInclude(bounds);
-
-        final isSelectedCommune = commune.name == selectedCommuneName;
-
-        final selectedFillPaint = Paint()
-          ..color = isSelectedCommune
-              ? Colors.orange.withValues(alpha: 0.70)
-              : provinceColor.withValues(alpha: 0.52)
-          ..style = PaintingStyle.fill;
-
-        final selectedBorderPaint = Paint()
-          ..color = isSelectedCommune ? Colors.orange : Colors.white.withValues(alpha: 0.95)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = isSelectedCommune ? 3 : 1.2;
-
-        canvas.drawPath(path, selectedFillPaint);
-        canvas.drawPath(path, selectedBorderPaint);
-
-        // final communeBounds = path.getBounds();
-        //
-        // if (communeBounds.width > 35 && communeBounds.height > 18) {
-        //   communeLabels.add(
-        //     _CommuneLabel(
-        //       name: commune.name,
-        //       center: communeBounds.center,
-        //     ),
-        //   );
-        // }
-      }
-    }
-
-    canvas.drawPath(allCommunePath, outerBorderPaint);
+      ..strokeWidth = 2.5
+      ..strokeJoin = StrokeJoin.round;
+      
+    canvas.drawPath(scaledProvincePath, outerBorderPaint);
 
     if (combinedBounds == null) return;
 
-    _drawProvinceLabel(
-      canvas,
-      combinedBounds!.center,
-      province.displayName,
-      provinceColor,
-    );
-
-    // debugPrint('Commune labels: ${communeLabels.length}');
-    //
-    // for (final label in communeLabels) {
-    //   _drawCommuneLabel(
-    //     canvas,
-    //     label.center,
-    //     label.name,
-    //   );
-    // }
+    if (!isCommuneMode) {
+      _drawProvinceLabel(
+        canvas,
+        combinedBounds!.center,
+        province.displayName,
+        provinceColor,
+      );
+    }
   }
 
   void _drawProvinceLabel(
@@ -1435,9 +1348,9 @@ class _DetailedProvincePainter extends CustomPainter {
       text: TextSpan(
         text: cleanText,
         style: const TextStyle(
-          color: Colors.black,
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
+          color: Colors.black87,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -1491,7 +1404,9 @@ class _DetailedProvincePainter extends CustomPainter {
   bool shouldRepaint(covariant _DetailedProvincePainter oldDelegate) {
     return oldDelegate.province != province ||
         oldDelegate.communes != communes ||
-        oldDelegate.selectedCommuneName != selectedCommuneName;
+        oldDelegate.isCommuneMode != isCommuneMode ||
+        oldDelegate.selectedCommuneName != selectedCommuneName ||
+        oldDelegate.scaledCommunePaths != scaledCommunePaths;
   }
 }
 
@@ -1717,11 +1632,11 @@ class _CommuneDetail extends StatelessWidget {
               ),
               _CommuneInfoChip(
                 label: 'Dân số',
-                value: _formatNumber(commune.population),
+                value: commune.population == null ? '—' : '${_formatNumber(commune.population)} người',
               ),
               _CommuneInfoChip(
                 label: 'Mật độ',
-                value: _formatNumber(commune.density),
+                value: commune.density == null ? '—' : '${_formatNumber(commune.density)} người/km²',
               ),
             ],
           ),
@@ -1819,6 +1734,183 @@ class _TravelMapBackgroundPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _CommunesSidePanel extends StatefulWidget {
+  const _CommunesSidePanel({
+    super.key,
+    required this.province,
+    required this.communes,
+    required this.selectedCommune,
+    required this.onCommuneSelected,
+  });
+
+  final ProvinceModel province;
+  final List<_CommuneArea> communes;
+  final _CommuneArea? selectedCommune;
+  final ValueChanged<_CommuneArea> onCommuneSelected;
+
+  @override
+  State<_CommunesSidePanel> createState() => _CommunesSidePanelState();
+}
+
+class _CommunesSidePanelState extends State<_CommunesSidePanel> {
+  // Track selected name locally to avoid rebuilding the entire list
+  String? _selectedName;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedName = widget.selectedCommune?.name;
+  }
+
+  @override
+  void didUpdateWidget(_CommunesSidePanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedCommune?.name != _selectedName) {
+      _selectedName = widget.selectedCommune?.name;
+    }
+  }
+
+  void _handleTap(_CommuneArea commune) {
+    setState(() {
+      _selectedName = commune.name;
+    });
+    widget.onCommuneSelected(commune);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      color: Colors.white,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Chi tiết Xã/Phường',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    widget.province.displayName,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${widget.communes.length} đơn vị hành chính',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: Colors.teal,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 18),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final commune = widget.communes[index];
+                  final isSelected = _selectedName == commune.name;
+                  return RepaintBoundary(
+                    child: _CommuneListTile(
+                      key: ValueKey(commune.name),
+                      index: index + 1,
+                      commune: commune,
+                      isSelected: isSelected,
+                      onTap: () => _handleTap(commune),
+                    ),
+                  );
+                },
+                childCount: widget.communes.length,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CommuneListTile extends StatelessWidget {
+  const _CommuneListTile({
+    super.key,
+    required this.index,
+    required this.commune,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final int index;
+  final _CommuneArea commune;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = isSelected ? Colors.teal : Colors.transparent;
+    final backgroundColor = isSelected
+        ? Colors.teal.withValues(alpha: 0.10)
+        : const Color(0xFFF5FAFA);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Material(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderColor, width: 1.2),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 12,
+                  backgroundColor: isSelected ? Colors.teal : Colors.grey.shade400,
+                  child: Text(
+                    '$index',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    commune.name,
+                    style: TextStyle(
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                      color: isSelected ? Colors.teal.shade900 : Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _TravelMapData {
