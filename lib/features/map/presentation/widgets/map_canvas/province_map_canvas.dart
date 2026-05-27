@@ -3,13 +3,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/datasources/tourism_local_datasource.dart';
-import '../../data/models/province_model.dart';
-import '../../data/models/tourism_destination_model.dart';
-import '../../data/models/commune_model.dart';
-import '../providers/province_provider.dart';
-import '../screens/travel_places_screen.dart';
-import 'map_explorer_panel.dart';
+import '../../../data/datasources/tourism_local_datasource.dart';
+import '../../../data/models/province_model.dart';
+import '../../../data/models/tourism_destination_model.dart';
+import '../../../data/models/commune_model.dart';
+import '../../providers/province_provider.dart';
+import '../../screens/travel_places_screen.dart';
+import '../map_explorer_panel.dart';
 
 class ProvinceMapCanvas extends ConsumerStatefulWidget {
   const ProvinceMapCanvas({super.key, this.isMobile = false});
