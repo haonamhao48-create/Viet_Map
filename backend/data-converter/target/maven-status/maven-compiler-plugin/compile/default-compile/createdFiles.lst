@@ -1,0 +1,15 @@
+com\vietmap\converter\service\GeoJsonConvertService.class
+com\vietmap\converter\model\ConvertResult$FileStats.class
+com\vietmap\converter\service\TourismConvertService.class
+com\vietmap\converter\controller\CommuneDataController.class
+com\vietmap\converter\service\FeaturePropertyPreserver.class
+com\vietmap\converter\config\ConverterProperties.class
+com\vietmap\converter\util\ProjectPaths.class
+com\vietmap\converter\model\ConvertResult.class
+com\vietmap\converter\service\GeometryOptimizer.class
+com\vietmap\converter\config\ConverterProperties$Outputs.class
+com\vietmap\converter\VietMapDataConverterApplication.class
+com\vietmap\converter\config\ConverterProperties$Sources.class
+com\vietmap\converter\controller\ConvertController.class
+com\vietmap\converter\util\JsonSanitizer.class
+com\vietmap\converter\service\DataConvertOrchestrator.class
