@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../widgets/map_explorer_panel.dart';
-import '../widgets/province_map_canvas.dart';
+import '../widgets/map_canvas/province_map_canvas.dart';
 
 class MapDesktopScreen extends StatelessWidget {
   const MapDesktopScreen({super.key});

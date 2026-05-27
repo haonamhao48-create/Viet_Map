@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/utils/text_normalizer.dart';
 import '../../data/datasources/province_local_datasource.dart';
@@ -7,6 +8,8 @@ import '../../data/models/province_model.dart';
 import '../../data/models/tourism_destination_model.dart';
 import '../../data/repositories/province_repository.dart';
 import '../../data/repositories/tourism_repository.dart';
+import '../../data/datasources/commune_local_datasource.dart';
+import '../../data/models/commune_model.dart';
 
 final provinceLocalDataSourceProvider = Provider<ProvinceLocalDataSource>((
   ref,
@@ -41,33 +44,37 @@ final tourismDestinationsProvider =
 
 final selectedProvinceIdProvider = StateProvider<String?>((ref) => null);
 
+final selectedCommuneIdProvider = StateProvider<String?>((ref) => null);
+
 final hoveredProvinceIdProvider = StateProvider<String?>((ref) => null);
+
+final hoveredCommuneIdProvider = StateProvider<String?>((ref) => null);
 
 final provinceSearchQueryProvider = StateProvider<String>((ref) => '');
 
 final filteredProvincesProvider = Provider<List<ProvinceModel>>((ref) {
   final provinces = ref.watch(provincesProvider).valueOrNull ?? const [];
+  final selectedRegion = ref.watch(selectedRegionFilterProvider);
+
   final query = TextNormalizer.normalizeVietnamese(
     ref.watch(provinceSearchQueryProvider),
   );
 
   final filtered = provinces
       .where((province) {
-        if (query.isEmpty) {
-          return true;
-        }
+    final matchesRegion =
+        selectedRegion == null || province.macroRegion == selectedRegion;
 
-        final haystacks = [
-          province.displayName,
-          province.name,
-          province.shortName,
-          province.type,
-          province.capital ?? '',
-          province.macroRegion,
-        ].map(TextNormalizer.normalizeVietnamese);
+    if (!matchesRegion) {
+      return false;
+    }
 
-        return haystacks.any((value) => value.contains(query));
-      })
+    if (query.isEmpty) {
+      return true;
+    }
+
+    return province.normalizedSearchText.contains(query);
+  })
       .toList(growable: false);
 
   filtered.sort((a, b) => a.displayName.compareTo(b.displayName));
@@ -128,14 +135,71 @@ bool _matchesProvince({
     return false;
   }
 
-  final candidates = <String>{
-    province.displayName,
-    province.name,
-    province.shortName,
-  }
-      .map(TextNormalizer.normalizeProvinceKey)
-      .where((value) => value.isNotEmpty)
-      .toSet();
-
-  return candidates.contains(tourismKey);
+  return province.normalizedProvinceKeys.contains(tourismKey);
 }
+
+final compareModeProvider = StateProvider<bool>((ref) => false);
+
+final firstCompareProvinceIdProvider = StateProvider<String?>((ref) => null);
+
+final secondCompareProvinceIdProvider = StateProvider<String?>((ref) => null);
+
+final firstCompareProvinceProvider = Provider<ProvinceModel?>((ref) {
+  final id = ref.watch(firstCompareProvinceIdProvider);
+  final provinces = ref.watch(provincesProvider).valueOrNull ?? [];
+
+  if (id == null) return null;
+
+  for (final province in provinces) {
+    if (province.id == id) return province;
+  }
+
+  return null;
+});
+
+final secondCompareProvinceProvider = Provider<ProvinceModel?>((ref) {
+  final id = ref.watch(secondCompareProvinceIdProvider);
+  final provinces = ref.watch(provincesProvider).valueOrNull ?? [];
+
+  if (id == null) return null;
+
+  for (final province in provinces) {
+    if (province.id == id) return province;
+  }
+
+  return null;
+});
+
+final selectedRegionFilterProvider = StateProvider<String?>((ref) => null);
+
+final featuredTravelModeProvider = StateProvider<bool>((ref) => false);
+
+final communeLocalDataSourceProvider = Provider<CommuneLocalDataSource>((ref) {
+  return CommuneLocalDataSource();
+});
+
+final communesByProvinceProvider = FutureProvider.family<List<CommuneModel>, String>((ref, provinceId) async {
+  final dataSource = ref.read(communeLocalDataSourceProvider);
+  return dataSource.loadCommunesForProvince(provinceId);
+});
+
+final selectedCommuneProvider = Provider<CommuneModel?>((ref) {
+  final selectedCommuneId = ref.watch(selectedCommuneIdProvider);
+  final selectedProvinceId = ref.watch(selectedProvinceIdProvider);
+
+  if (selectedCommuneId == null || selectedProvinceId == null) {
+    return null;
+  }
+
+  final communes = ref.watch(communesByProvinceProvider(selectedProvinceId)).valueOrNull;
+  if (communes == null) return null;
+
+  for (final commune in communes) {
+    if (commune.id == selectedCommuneId) {
+      return commune;
+    }
+  }
+  return null;
+});
+
+final communeModeProvider = StateProvider<bool>((ref) => false);
