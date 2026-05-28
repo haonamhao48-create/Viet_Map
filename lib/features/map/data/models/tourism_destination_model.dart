@@ -34,6 +34,25 @@ class TourismDestinationModel {
     );
   }
 
+  factory TourismDestinationModel.fromJson(Map<String, dynamic> json) {
+    return TourismDestinationModel(
+      id: _toInt(json['id']),
+      name: _string(json['name']),
+      province: _string(json['province']),
+      description: _string(json['description']),
+      keywords: (json['keywords'] as List<dynamic>? ?? const [])
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList(growable: false),
+      latitude: _toDouble(
+        json['latitude'] ?? json['lat'] ?? json['vi_do'] ?? json['vĩ_độ'],
+      ),
+      longitude: _toDouble(
+        json['longitude'] ?? json['lng'] ?? json['lon'] ?? json['kinh_do'] ?? json['kinhđo'],
+      ),
+    );
+  }
+
   late final String normalizedProvinceKey =
       TextNormalizer.normalizeProvinceKey(province);
 
@@ -51,6 +70,10 @@ class TourismDestinationModel {
     }
 
     return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  static String _string(dynamic value) {
+    return value?.toString().trim() ?? '';
   }
 
   static double _toDouble(dynamic value) {
