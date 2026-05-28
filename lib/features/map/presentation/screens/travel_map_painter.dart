@@ -73,15 +73,6 @@ class _DetailedProvincePainter extends CustomPainter {
     canvas.drawPath(scaledProvincePath, outerBorderPaint);
 
     if (combinedBounds == null) return;
-
-    if (!isCommuneMode) {
-      _drawProvinceLabel(
-        canvas,
-        combinedBounds!.center,
-        province.displayName,
-        provinceColor,
-      );
-    }
   }
 
   void _drawProvinceLabel(
