@@ -395,6 +395,7 @@ class _PlaceBubble extends StatelessWidget {
     required this.index,
     required this.place,
     required this.isSelected,
+    required this.showLabel,
     required this.onTap,
     required this.isInRoute,
     required this.onRouteToggle,
@@ -403,6 +404,7 @@ class _PlaceBubble extends StatelessWidget {
   final int index;
   final TourismDestinationModel place;
   final bool isSelected;
+  final bool showLabel;
   final VoidCallback onTap;
   final bool isInRoute;
   final VoidCallback onRouteToggle;
@@ -416,54 +418,124 @@ class _PlaceBubble extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(999),
           onTap: onTap,
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 240),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected ? Colors.teal : Colors.white,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: Colors.teal.withValues(alpha: 0.55),
-                width: isSelected ? 2 : 1,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _NumberedPin(
+                index: index,
+                isSelected: isSelected,
+                isInRoute: isInRoute,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.12),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 14,
-                  backgroundColor: isSelected ? Colors.white : Colors.teal,
-                  child: Text(
-                    '$index',
-                    style: TextStyle(
-                      color: isSelected ? Colors.teal : Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+              if (showLabel) ...[
+                const SizedBox(height: 6),
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 230),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.teal : Colors.white,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: Colors.teal.withValues(alpha: 0.55),
+                      width: isSelected ? 2 : 1,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleAvatar(
+                        radius: 12,
+                        backgroundColor: isSelected ? Colors.white : Colors.teal,
+                        child: Text(
+                          '$index',
+                          style: TextStyle(
+                            color: isSelected ? Colors.teal : Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          place.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    place.name,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
               ],
-            ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _NumberedPin extends StatelessWidget {
+  const _NumberedPin({
+    required this.index,
+    required this.isSelected,
+    required this.isInRoute,
+  });
+
+  final int index;
+  final bool isSelected;
+  final bool isInRoute;
+
+  @override
+  Widget build(BuildContext context) {
+    final pinColor = isSelected
+        ? Colors.teal
+        : (isInRoute ? Colors.orange : Colors.teal.shade600);
+
+    return SizedBox(
+      width: 34,
+      height: 42,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Icon(
+              Icons.location_on_rounded,
+              size: 38,
+              color: pinColor,
+            ),
+          ),
+          Positioned(
+            top: 8,
+            child: Container(
+              width: 20,
+              height: 20,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '$index',
+                style: TextStyle(
+                  color: pinColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -468,12 +468,83 @@ class _TravelMapViewState extends State<_TravelMapView> {
     return null;
   }
 
+  List<Offset> _buildMarkerPoints(
+    Size size,
+    List<TourismDestinationModel> places,
+  ) {
+    final rawPoints = <Offset>[];
+
+    for (var index = 0; index < places.length; index++) {
+      final place = places[index];
+      final hasValidLatLng = place.latitude != 0 && place.longitude != 0;
+
+      if (hasValidLatLng && _projection != null) {
+        rawPoints.add(
+          _projection!.project(
+            _MapPoint(
+              longitude: place.longitude,
+              latitude: place.latitude,
+            ),
+          ),
+        );
+      } else {
+        final fallback = _fallbackPositions[index % _fallbackPositions.length];
+        rawPoints.add(
+          Offset(
+            size.width * fallback.dx,
+            size.height * fallback.dy,
+          ),
+        );
+      }
+    }
+
+    const minDistance = 44.0;
+    const baseSpreadRadius = 18.0;
+    final adjusted = <Offset>[];
+
+    for (var i = 0; i < rawPoints.length; i++) {
+      var point = rawPoints[i];
+      var overlapIndex = 0;
+
+      for (var j = 0; j < adjusted.length; j++) {
+        if ((adjusted[j] - point).distance < minDistance) {
+          overlapIndex++;
+        }
+      }
+
+      if (overlapIndex > 0) {
+        final ring = ((overlapIndex - 1) ~/ 6) + 1;
+        final angle = (overlapIndex - 1) * (math.pi / 3);
+        final radius = baseSpreadRadius + (ring - 1) * 12;
+        point = Offset(
+          point.dx + math.cos(angle) * radius,
+          point.dy + math.sin(angle) * radius,
+        );
+      }
+
+      adjusted.add(
+        Offset(
+          point.dx.clamp(14.0, size.width - 14.0),
+          point.dy.clamp(14.0, size.height - 14.0),
+        ),
+      );
+    }
+
+    return adjusted;
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = Size(constraints.maxWidth, constraints.maxHeight);
         _buildPathsIfNeeded(size);
+        final placesToRender = widget.selectedPlace == null
+            ? widget.places
+            : widget.places
+                .where((place) => place.name == widget.selectedPlace!.name)
+                .toList(growable: false);
+        final markerPoints = _buildMarkerPoints(size, placesToRender);
 
         return GestureDetector(
           behavior: HitTestBehavior.translucent,
@@ -547,41 +618,27 @@ class _TravelMapViewState extends State<_TravelMapView> {
                 ),
               ),
               if (widget.showPlacesOnMap && !widget.isCommuneMode)
-                ...List.generate(widget.places.length, (index) {
-                  final place = widget.places[index];
+                ...List.generate(placesToRender.length, (index) {
+                  final place = placesToRender[index];
                   final isSelected =
                       widget.selectedPlace?.name == place.name;
                   final isInRoute = widget.routePlaces
                       .any((item) => item.name == place.name);
-
-                  final Offset point;
-                  final hasValidLatLng =
-                      place.latitude != 0 && place.longitude != 0;
-
-                  if (hasValidLatLng && _projection != null) {
-                    point = _projection!.project(
-                      _MapPoint(
-                        longitude: place.longitude,
-                        latitude: place.latitude,
-                      ),
-                    );
-                  } else {
-                    final fallback =
-                        _fallbackPositions[index % _fallbackPositions.length];
-                    point = Offset(
-                      constraints.maxWidth * fallback.dx,
-                      constraints.maxHeight * fallback.dy,
-                    );
-                  }
+                  final point = markerPoints[index];
+                  final displayIndex = widget.places.indexWhere(
+                        (item) => item.name == place.name,
+                      ) +
+                      1;
 
                   return Positioned(
-                    left: point.dx - 18,
-                    top: point.dy - 18,
+                    left: point.dx - 16,
+                    top: point.dy - 16,
                     child: _PlaceBubble(
-                      index: index + 1,
+                      index: displayIndex > 0 ? displayIndex : index + 1,
                       place: place,
                       isSelected: isSelected,
                       isInRoute: isInRoute,
+                      showLabel: isSelected || isInRoute,
                       onTap: () => widget.onPlaceSelected(place),
                       onRouteToggle: () => widget.onRouteToggle(place),
                     ),
