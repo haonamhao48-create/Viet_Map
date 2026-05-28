@@ -51,6 +51,9 @@ class _MapExplorerPanelState extends ConsumerState<MapExplorerPanel> {
     final selectedProvinceId = ref.watch(selectedProvinceIdProvider);
     final searchQuery = ref.watch(provinceSearchQueryProvider);
     final filteredProvinces = ref.watch(filteredProvincesProvider);
+    final compareMode = ref.watch(compareModeProvider);
+    final firstCompareProvince = ref.watch(firstCompareProvinceProvider);
+    final secondCompareProvince = ref.watch(secondCompareProvinceProvider);
     final theme = Theme.of(context);
 
     if (_searchController.text != searchQuery) {
@@ -128,9 +131,17 @@ class _MapExplorerPanelState extends ConsumerState<MapExplorerPanel> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  if (widget.showSelectionCard && selectedProvince != null) ...[
-                    _SelectedProvinceCard(province: selectedProvince),
-                    const SizedBox(height: 16),
+                  if (widget.showSelectionCard) ...[
+                    if (compareMode) ...[
+                      _ProvinceComparePanel(
+                        firstProvince: firstCompareProvince,
+                        secondProvince: secondCompareProvince,
+                      ),
+                      const SizedBox(height: 16),
+                    ] else if (selectedProvince != null) ...[
+                      _SelectedProvinceCard(province: selectedProvince),
+                      const SizedBox(height: 16),
+                    ],
                   ],
                   _RegionLegend(compact: widget.compact),
                   const SizedBox(height: 16),
@@ -228,9 +239,11 @@ class MapSelectionDetailsPanel extends ConsumerWidget {
   const MapSelectionDetailsPanel({
     super.key,
     this.compact = false,
+    this.mobilePopup = false,
   });
 
   final bool compact;
+  final bool mobilePopup;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -244,12 +257,14 @@ class MapSelectionDetailsPanel extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLowest,
-        border: Border(
-          left: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
+        color: mobilePopup ? Colors.transparent : theme.colorScheme.surfaceContainerLowest,
+        border: mobilePopup
+            ? null
+            : Border(
+                left: BorderSide(
+                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
       ),
       child: CustomScrollView(
         slivers: [
@@ -408,7 +423,8 @@ class _PanelHintRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final compareMode = ref.watch(compareModeProvider);
     final featuredTravelMode = ref.watch(featuredTravelModeProvider);
-    final communeMode = ref.watch(communeModeProvider);
+    ref.watch(communeModeProvider); // watch for future use
+
 
     return Wrap(
       spacing: 8,
@@ -1103,11 +1119,24 @@ class _MobileSearchBar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'VN Map',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+          Row(
+            children: [
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () {
+                  Scaffold.of(context).openDrawer();
+                },
+                icon: const Icon(Icons.menu_rounded, size: 28),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'VN Map',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           _SearchField(
@@ -1306,7 +1335,8 @@ class _CompareHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    Theme.of(context); // available if needed
+
     final firstColor = ProvinceRegionPalette.colorForRegion(first.macroRegion);
     final secondColor = ProvinceRegionPalette.colorForRegion(second.macroRegion);
 
