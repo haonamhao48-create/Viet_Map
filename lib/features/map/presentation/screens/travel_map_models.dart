@@ -1,5 +1,7 @@
+// ignore_for_file: unused_element
 part of 'travel_places_screen.dart';
 
+/// Data class chứa kết quả load bản đồ (places + communes).
 class _TravelMapData {
   const _TravelMapData({
     required this.places,
@@ -10,6 +12,7 @@ class _TravelMapData {
   final List<_CommuneArea> communes;
 }
 
+/// Dữ liệu một xã/phường (từ GeoJSON).
 class _CommuneArea {
   const _CommuneArea({
     required this.name,
@@ -34,6 +37,7 @@ class _CommuneArea {
   final List<List<List<_MapPoint>>> polygons;
 }
 
+/// Một toạ độ địa lý (lon/lat).
 class _MapPoint {
   const _MapPoint({
     required this.longitude,
@@ -44,6 +48,7 @@ class _MapPoint {
   final double latitude;
 }
 
+/// Ánh xạ toạ độ địa lý → pixel trên canvas.
 class _MapProjection {
   const _MapProjection({
     required this.minLon,
@@ -62,17 +67,6 @@ class _MapProjection {
   Offset project(_MapPoint point) {
     final x = offsetX + ((point.longitude - minLon) * scale);
     final y = offsetY + ((maxLat - point.latitude) * scale);
-
     return Offset(x, y);
   }
 }
-
-// class _CommuneLabel {
-//   const _CommuneLabel({
-//     required this.name,
-//     required this.center,
-//   });
-//
-//   final String name;
-//   final Offset center;
-// }

@@ -1,0 +1,12 @@
+D:\FPT\Ki8_FPT\PRM393\Viet_Map\Viet_Map\backend\data-converter\src\main\java\com\vietmap\converter\util\JsonSanitizer.java
+D:\FPT\Ki8_FPT\PRM393\Viet_Map\Viet_Map\backend\data-converter\src\main\java\com\vietmap\converter\service\GeometryOptimizer.java
+D:\FPT\Ki8_FPT\PRM393\Viet_Map\Viet_Map\backend\data-converter\src\main\java\com\vietmap\converter\service\TourismConvertService.java
+D:\FPT\Ki8_FPT\PRM393\Viet_Map\Viet_Map\backend\data-converter\src\main\java\com\vietmap\converter\util\ProjectPaths.java
+D:\FPT\Ki8_FPT\PRM393\Viet_Map\Viet_Map\backend\data-converter\src\main\java\com\vietmap\converter\VietMapDataConverterApplication.java
+D:\FPT\Ki8_FPT\PRM393\Viet_Map\Viet_Map\backend\data-converter\src\main\java\com\vietmap\converter\controller\CommuneDataController.java
+D:\FPT\Ki8_FPT\PRM393\Viet_Map\Viet_Map\backend\data-converter\src\main\java\com\vietmap\converter\controller\ConvertController.java
+D:\FPT\Ki8_FPT\PRM393\Viet_Map\Viet_Map\backend\data-converter\src\main\java\com\vietmap\converter\config\ConverterProperties.java
+D:\FPT\Ki8_FPT\PRM393\Viet_Map\Viet_Map\backend\data-converter\src\main\java\com\vietmap\converter\model\ConvertResult.java
+D:\FPT\Ki8_FPT\PRM393\Viet_Map\Viet_Map\backend\data-converter\src\main\java\com\vietmap\converter\service\FeaturePropertyPreserver.java
+D:\FPT\Ki8_FPT\PRM393\Viet_Map\Viet_Map\backend\data-converter\src\main\java\com\vietmap\converter\service\DataConvertOrchestrator.java
+D:\FPT\Ki8_FPT\PRM393\Viet_Map\Viet_Map\backend\data-converter\src\main\java\com\vietmap\converter\service\GeoJsonConvertService.java
