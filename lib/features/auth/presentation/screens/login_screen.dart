@@ -112,8 +112,9 @@ class LoginScreen extends ConsumerWidget {
   String _friendlyError(Object error) {
     if (error is GoogleSignInException) {
       if (error.code == GoogleSignInExceptionCode.canceled) {
-        return 'Đăng nhập bị hủy hoặc cấu hình Google chưa đúng. '
-            'Kiểm tra SHA-1, package name và google-services.json trên Firebase.';
+        final details = error.description ?? '';
+        return 'Google Sign-In thất bại ($details). '
+            'Chạy flutter clean && flutter run, rồi kiểm tra SHA-1 và google-services.json.';
       }
       return 'Google Sign-In lỗi: ${error.description ?? error.code.name}';
     }
