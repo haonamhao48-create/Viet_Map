@@ -32,6 +32,17 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Tránh Credential Manager lỗi [16] trên một số máy Oppo/Samsung. -->
+        <meta-data
+            android:name="com.google.android.gms.credentials.API_ENABLED"
+            android:value="false" />
+        <meta-data
+            android:name="com.google.android.gms.credentials.CredentialPickerConfig"
+            android:value="false" />
+        <meta-data
+            android:name="androidx.credentials.CREDENTIAL_SERVICE_ENABLED"
+            android:value="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
@@ -43,5 +54,6 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <package android:name="com.google.android.gms" />
     </queries>
 </manifest>

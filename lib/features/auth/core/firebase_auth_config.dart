@@ -12,8 +12,6 @@ class FirebaseAuthConfig {
   static const fallbackWebClientId =
       '166713477101-v09cj3hm7vclucujp4usha14a3hcrdgj.apps.googleusercontent.com';
 
-  static bool _initialized = false;
-
   static String get webClientId {
     final fromEnv = dotenv.env[_envKey]?.trim() ?? '';
     if (fromEnv.isNotEmpty) {
@@ -22,16 +20,7 @@ class FirebaseAuthConfig {
     return fallbackWebClientId;
   }
 
-  static bool get _isMobile =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.android ||
-          defaultTargetPlatform == TargetPlatform.iOS);
-
-  static Future<void> ensureGoogleSignInInitialized() async {
-    if (_initialized) {
-      return;
-    }
-
+  static GoogleSignIn createGoogleSignIn() {
     final needsClientId = kIsWeb ||
         defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.linux;
@@ -43,13 +32,17 @@ class FirebaseAuthConfig {
       );
     }
 
-    // Android/iOS: để plugin đọc serverClientId từ google-services.json.
-    // Desktop/Web: truyền web client id từ .env.
-    await GoogleSignIn.instance.initialize(
-      clientId: needsClientId ? webClientId : null,
-      serverClientId: _isMobile ? null : webClientId,
-    );
+    // v6 dùng GoogleSignInClient ổn định hơn Credential Manager (v7) trên OEM Android.
+    if (needsClientId) {
+      return GoogleSignIn(
+        clientId: webClientId,
+        scopes: const ['email', 'profile'],
+      );
+    }
 
-    _initialized = true;
+    return GoogleSignIn(
+      serverClientId: webClientId,
+      scopes: const ['email', 'profile'],
+    );
   }
 }

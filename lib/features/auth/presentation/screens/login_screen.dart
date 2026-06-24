@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 import '../providers/auth_provider.dart';
 
@@ -110,15 +109,6 @@ class LoginScreen extends ConsumerWidget {
   }
 
   String _friendlyError(Object error) {
-    if (error is GoogleSignInException) {
-      if (error.code == GoogleSignInExceptionCode.canceled) {
-        final details = error.description ?? '';
-        return 'Google Sign-In thất bại ($details). '
-            'Chạy flutter clean && flutter run, rồi kiểm tra SHA-1 và google-services.json.';
-      }
-      return 'Google Sign-In lỗi: ${error.description ?? error.code.name}';
-    }
-
     if (error is FirebaseAuthException) {
       return error.message ?? 'Firebase Auth lỗi: ${error.code}';
     }

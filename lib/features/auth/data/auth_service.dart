@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../core/firebase_auth_config.dart';
@@ -10,11 +9,14 @@ class AuthService {
   AuthService({
     FirebaseAuth? firebaseAuth,
     FirebaseFirestore? firestore,
+    GoogleSignIn? googleSignIn,
   })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+        _firestore = firestore ?? FirebaseFirestore.instance,
+        _googleSignIn = googleSignIn ?? FirebaseAuthConfig.createGoogleSignIn();
 
   final FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firestore;
+  final GoogleSignIn _googleSignIn;
 
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
@@ -39,16 +41,15 @@ class AuthService {
   }
 
   Future<UserCredential> signInWithGoogle() async {
-    await FirebaseAuthConfig.ensureGoogleSignInInitialized();
-
     final googleUser = await _requestGoogleAccount();
-    final idToken = googleUser.authentication.idToken;
+    final googleAuth = await googleUser.authentication;
+    final idToken = googleAuth.idToken;
 
     if (idToken == null || idToken.isEmpty) {
       throw FirebaseAuthException(
         code: 'missing-id-token',
         message:
-            'Không lấy được idToken từ Google. Hãy rebuild app sau khi cập nhật google-services.json.',
+            'Không lấy được idToken từ Google. Kiểm tra serverClientId (Web Client ID) trên Firebase.',
       );
     }
 
@@ -61,29 +62,19 @@ class AuthService {
   }
 
   Future<GoogleSignInAccount> _requestGoogleAccount() async {
-    if (!kIsWeb) {
-      final lightweight =
-          await GoogleSignIn.instance.attemptLightweightAuthentication();
-      if (lightweight != null) {
-        return lightweight;
-      }
+    final silent = await _googleSignIn.signInSilently();
+    if (silent != null) {
+      return silent;
     }
 
-    try {
-      return await GoogleSignIn.instance.authenticate();
-    } on GoogleSignInException catch (error) {
-      if (error.code == GoogleSignInExceptionCode.canceled &&
-          !kIsWeb &&
-          defaultTargetPlatform == TargetPlatform.android) {
-        throw FirebaseAuthException(
-          code: 'google-sign-in-canceled',
-          message:
-              'Google Sign-In thất bại. Hãy chạy: flutter clean && flutter run, '
-              'và kiểm tra SHA-1 + google-services.json trên Firebase Console.',
-        );
-      }
-      rethrow;
+    final account = await _googleSignIn.signIn();
+    if (account == null) {
+      throw FirebaseAuthException(
+        code: 'google-sign-in-canceled',
+        message: 'Đăng nhập Google bị hủy.',
+      );
     }
+    return account;
   }
 
   Future<void> _saveUserToFirestore(User? user) async {
@@ -115,7 +106,7 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    await GoogleSignIn.instance.signOut();
+    await _googleSignIn.signOut();
     await _firebaseAuth.signOut();
   }
 }
