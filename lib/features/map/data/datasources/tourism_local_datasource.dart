@@ -1,19 +1,43 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../models/tourism_destination_model.dart';
 
 class TourismLocalDataSource {
   Future<List<TourismDestinationModel>> loadDestinations() async {
-    final rawString = await rootBundle.loadString(
-      'assets/data/tourism_destinations.json',
-    );
-    final List<dynamic> data = jsonDecode(rawString) as List<dynamic>;
-
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map(TourismDestinationModel.fromJson)
-        .toList(growable: false);
+    try {
+      final rawString = await rootBundle.loadString(
+        'assets/data/tourism_destinations.json',
+      );
+      return compute(_parseDestinations, rawString);
+    } catch (_) {
+      // Backward-compatible fallback for old compact dataset.
+      final compactRawString = await rootBundle.loadString(
+        'assets/data/tourism_destinations_compact.json',
+      );
+      return compute(_parseDestinations, compactRawString);
+    }
   }
+}
+
+List<TourismDestinationModel> _parseDestinations(String rawString) {
+  final decoded = jsonDecode(rawString);
+  if (decoded is! List) {
+    return const [];
+  }
+
+  final result = <TourismDestinationModel>[];
+  for (final item in decoded) {
+    if (item is Map<String, dynamic>) {
+      result.add(TourismDestinationModel.fromJson(item));
+      continue;
+    }
+    if (item is List<dynamic>) {
+      result.add(TourismDestinationModel.fromCompactJsonRow(item));
+    }
+  }
+
+  return result;
 }

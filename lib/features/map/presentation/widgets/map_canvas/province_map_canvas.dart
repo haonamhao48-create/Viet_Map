@@ -3,12 +3,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/datasources/tourism_local_datasource.dart';
-import '../../data/models/province_model.dart';
-import '../../data/models/tourism_destination_model.dart';
-import '../providers/province_provider.dart';
-import '../screens/travel_places_screen.dart';
-import 'map_explorer_panel.dart';
+import '../../../data/datasources/tourism_local_datasource.dart';
+import '../../../data/models/province_model.dart';
+import '../../../data/models/tourism_destination_model.dart';
+import '../../../data/models/commune_model.dart';
+import '../../providers/province_provider.dart';
+import '../../screens/travel_places_screen.dart';
+import '../map_explorer_panel.dart';
 
 class ProvinceMapCanvas extends ConsumerStatefulWidget {
   const ProvinceMapCanvas({super.key, this.isMobile = false});
@@ -49,15 +50,20 @@ class _ProvinceMapCanvasState extends ConsumerState<ProvinceMapCanvas> {
     final provincesAsync = ref.watch(provincesProvider);
     final selectedId = ref.watch(selectedProvinceIdProvider);
     final featuredTravelMode = ref.watch(featuredTravelModeProvider);
+    final communeMode = ref.watch(communeModeProvider);
     final compareMode = ref.watch(compareModeProvider);
     final firstCompareId = ref.watch(firstCompareProvinceIdProvider);
     final secondCompareId = ref.watch(secondCompareProvinceIdProvider);
     final hoveredId = ref.watch(hoveredProvinceIdProvider);
+    final hoveredCommuneId = ref.watch(hoveredCommuneIdProvider);
     final matchingIds = ref.watch(matchingProvinceIdsProvider);
     final selectedRegion = ref.watch(selectedRegionFilterProvider);
     final hasActiveFilter =
         ref.watch(provinceSearchQueryProvider).trim().isNotEmpty ||
         selectedRegion != null;
+
+    final communesAsync = selectedId != null ? ref.watch(communesByProvinceProvider(selectedId)) : null;
+    final communes = communesAsync?.valueOrNull ?? [];
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -71,9 +77,11 @@ class _ProvinceMapCanvasState extends ConsumerState<ProvinceMapCanvas> {
                 ? null
                 : scene.provinceById[selectedId];
             final featuredPlacesFuture = _tourismFuture;
+            final renderCommunes = communeMode ? _projectCommunes(communes, scene) : <CommuneRenderData>[];
             return MouseRegion(
               onExit: (_) {
                 ref.read(hoveredProvinceIdProvider.notifier).state = null;
+                ref.read(hoveredCommuneIdProvider.notifier).state = null;
               },
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -112,6 +120,8 @@ class _ProvinceMapCanvasState extends ConsumerState<ProvinceMapCanvas> {
                                 selectedRegionFilter: selectedRegion,
                                 hasActiveFilter: hasActiveFilter,
                                 colorScheme: Theme.of(context).colorScheme,
+                                communes: renderCommunes,
+                                hoveredCommuneId: hoveredCommuneId,
                               ),
                             ),
                           ),
@@ -125,7 +135,14 @@ class _ProvinceMapCanvasState extends ConsumerState<ProvinceMapCanvas> {
                           if (_shouldSuspendHover()) {
                             return;
                           }
-                          final provinceId = _provinceIdAtPosition(
+                          
+                          final communeId = (communeMode && renderCommunes.isNotEmpty) ? _communeIdAtPosition(renderCommunes, event.localPosition) : null;
+                          final hoveredCommuneNotifier = ref.read(hoveredCommuneIdProvider.notifier);
+                          if (hoveredCommuneNotifier.state != communeId) {
+                            hoveredCommuneNotifier.state = communeId;
+                          }
+
+                          final provinceId = communeId != null ? selectedId : _provinceIdAtPosition(
                             scene,
                             event.localPosition,
                           );
@@ -140,6 +157,15 @@ class _ProvinceMapCanvasState extends ConsumerState<ProvinceMapCanvas> {
                           if (featuredTravelMode) {
                             return;
                           }
+                          
+                          final communeId = (communeMode && renderCommunes.isNotEmpty) ? _communeIdAtPosition(renderCommunes, event.localPosition) : null;
+                          if (communeId != null) {
+                            ref.read(selectedCommuneIdProvider.notifier).state = communeId;
+                            return;
+                          } else {
+                            ref.read(selectedCommuneIdProvider.notifier).state = null;
+                          }
+
                           final provinceId = _provinceIdAtPosition(
                             scene,
                             event.localPosition,
@@ -299,6 +325,22 @@ class _ProvinceMapCanvasState extends ConsumerState<ProvinceMapCanvas> {
     return elapsed < _hoverSuspendAfterTransformMs;
   }
 
+  String? _communeIdAtPosition(List<CommuneRenderData> communes, Offset localPosition) {
+    if (_viewportSize.isEmpty) return null;
+    final scenePoint = _transformationController.toScene(localPosition);
+
+    for (final commune in communes.reversed) {
+      if (!commune.bounds.inflate(2).contains(scenePoint)) continue;
+      for (final pathData in commune.paths) {
+        if (pathData.hitBounds.inflate(2).contains(scenePoint) &&
+            pathData.path.contains(scenePoint)) {
+          return commune.commune.id;
+        }
+      }
+    }
+    return null;
+  }
+
   String? _provinceIdAtPosition(ProvinceMapScene scene, Offset localPosition) {
     if (_viewportSize.isEmpty) {
       return null;
@@ -358,6 +400,8 @@ class _ProvinceMapPainter extends CustomPainter {
     required this.hasActiveFilter,
     required this.colorScheme,
     required this.selectedRegionFilter,
+    required this.communes,
+    required this.hoveredCommuneId,
   });
 
   final ProvinceMapScene scene;
@@ -370,6 +414,8 @@ class _ProvinceMapPainter extends CustomPainter {
   final bool hasActiveFilter;
   final ColorScheme colorScheme;
   final String? selectedRegionFilter;
+  final List<CommuneRenderData> communes;
+  final String? hoveredCommuneId;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -508,6 +554,33 @@ class _ProvinceMapPainter extends CustomPainter {
             : province.province.displayName;
 
         _drawProvinceLabel(canvas, province.labelAnchor!, labelText, baseColor);
+      }
+    }
+
+    if (communes.isNotEmpty) {
+      final communeBorderPaint = Paint()
+        ..color = Colors.white.withValues(alpha: 0.8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.5;
+
+      final fillPaint = Paint()..style = PaintingStyle.fill;
+
+      for (final communeData in communes) {
+        final isHovered = communeData.commune.id == hoveredCommuneId;
+        final baseColor = ProvinceRegionPalette.colorForRegion(
+            scene.provinceById[selectedProvinceId]?.province.macroRegion ?? 'DongBangSongHong'
+        );
+
+        if (isHovered) {
+          fillPaint.color = baseColor.withValues(alpha: 0.6);
+        } else {
+          fillPaint.color = baseColor.withValues(alpha: 0.3);
+        }
+
+        for (final pathData in communeData.paths) {
+          canvas.drawPath(pathData.path, fillPaint);
+          canvas.drawPath(pathData.path, communeBorderPaint);
+        }
       }
     }
   }
@@ -929,12 +1002,22 @@ class ProvinceMapScene {
     required this.canvasSize,
     required this.renderProvinces,
     required this.provinceById,
+    required this.minLon,
+    required this.maxLat,
+    required this.scale,
+    required this.padding,
+    required this.translation,
   });
 
   final Size viewportSize;
   final Size canvasSize;
   final List<ProvinceRenderData> renderProvinces;
   final Map<String, ProvinceRenderData> provinceById;
+  final double minLon;
+  final double maxLat;
+  final double scale;
+  final double padding;
+  final Offset translation;
 
   factory ProvinceMapScene.fromProvinces(
     List<ProvinceModel> provinces,
@@ -947,6 +1030,11 @@ class ProvinceMapScene {
         canvasSize: viewportSize,
         renderProvinces: const [],
         provinceById: const {},
+        minLon: 0,
+        maxLat: 0,
+        scale: 1,
+        padding: padding,
+        translation: Offset.zero,
       );
     }
 
@@ -1043,6 +1131,11 @@ class ProvinceMapScene {
         canvasSize: viewportSize,
         renderProvinces: const [],
         provinceById: const {},
+        minLon: 0,
+        maxLat: 0,
+        scale: 1,
+        padding: padding,
+        translation: Offset.zero,
       );
     }
 
@@ -1097,6 +1190,11 @@ class ProvinceMapScene {
       canvasSize: canvasSize,
       renderProvinces: renderProvinces,
       provinceById: provinceById,
+      minLon: minLon,
+      maxLat: maxLat,
+      scale: scale,
+      padding: padding,
+      translation: translation,
     );
   }
 
@@ -1158,4 +1256,73 @@ class ProvinceRenderData {
     }
     return bounds.width <= 28 || bounds.height <= 28;
   }
+}
+
+class ProvincePathData {
+  final Path path;
+  final Rect hitBounds;
+
+  const ProvincePathData({
+    required this.path,
+    required this.hitBounds,
+  });
+}
+
+class CommuneRenderData {
+  final CommuneModel commune;
+  final List<ProvincePathData> paths;
+  final Rect bounds;
+
+  const CommuneRenderData({
+    required this.commune,
+    required this.paths,
+    required this.bounds,
+  });
+}
+
+List<CommuneRenderData> _projectCommunes(List<CommuneModel> communes, ProvinceMapScene scene) {
+  if (communes.isEmpty) return [];
+
+  final result = <CommuneRenderData>[];
+  for (final commune in communes) {
+    final paths = <ProvincePathData>[];
+    Rect? communeBounds;
+
+    for (final polygon in commune.polygons) {
+      final path = Path();
+      for (final ring in polygon.rings) {
+        bool first = true;
+        for (final coord in ring) {
+          final x = (coord.longitude - scene.minLon) * scene.scale;
+          final y = (scene.maxLat - coord.latitude) * scene.scale;
+
+          if (first) {
+            path.moveTo(x, y);
+            first = false;
+          } else {
+            path.lineTo(x, y);
+          }
+        }
+        path.close();
+      }
+
+      final shiftedPath = path.shift(scene.translation);
+      final bounds = shiftedPath.getBounds();
+
+      paths.add(ProvincePathData(path: shiftedPath, hitBounds: bounds));
+
+      if (communeBounds == null) {
+        communeBounds = bounds;
+      } else {
+        communeBounds = communeBounds.expandToInclude(bounds);
+      }
+    }
+
+    result.add(CommuneRenderData(
+      commune: commune,
+      paths: paths,
+      bounds: communeBounds ?? Rect.zero,
+    ));
+  }
+  return result;
 }

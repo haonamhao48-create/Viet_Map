@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "166713477101",
+    "project_id": "vietmap-9c90d",
+    "storage_bucket": "vietmap-9c90d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:166713477101:android:6fc41dd44d477265f709e4",
+        "android_client_info": {
+          "package_name": "com.example.vn_map_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC695v4Uakna7w-quB_agxnVlbm5qI8C-M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+
 import '../../../../core/utils/text_normalizer.dart';
 import '../../data/datasources/province_local_datasource.dart';
 import '../../data/datasources/tourism_local_datasource.dart';
@@ -7,6 +8,8 @@ import '../../data/models/province_model.dart';
 import '../../data/models/tourism_destination_model.dart';
 import '../../data/repositories/province_repository.dart';
 import '../../data/repositories/tourism_repository.dart';
+import '../../data/datasources/commune_local_datasource.dart';
+import '../../data/models/commune_model.dart';
 
 final provinceLocalDataSourceProvider = Provider<ProvinceLocalDataSource>((
   ref,
@@ -41,7 +44,11 @@ final tourismDestinationsProvider =
 
 final selectedProvinceIdProvider = StateProvider<String?>((ref) => null);
 
+final selectedCommuneIdProvider = StateProvider<String?>((ref) => null);
+
 final hoveredProvinceIdProvider = StateProvider<String?>((ref) => null);
+
+final hoveredCommuneIdProvider = StateProvider<String?>((ref) => null);
 
 final provinceSearchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -66,16 +73,7 @@ final filteredProvincesProvider = Provider<List<ProvinceModel>>((ref) {
       return true;
     }
 
-    final haystacks = [
-      province.displayName,
-      province.name,
-      province.shortName,
-      province.type,
-      province.capital ?? '',
-      province.macroRegion,
-    ].map(TextNormalizer.normalizeVietnamese);
-
-    return haystacks.any((value) => value.contains(query));
+    return province.normalizedSearchText.contains(query);
   })
       .toList(growable: false);
 
@@ -137,16 +135,7 @@ bool _matchesProvince({
     return false;
   }
 
-  final candidates = <String>{
-    province.displayName,
-    province.name,
-    province.shortName,
-  }
-      .map(TextNormalizer.normalizeProvinceKey)
-      .where((value) => value.isNotEmpty)
-      .toSet();
-
-  return candidates.contains(tourismKey);
+  return province.normalizedProvinceKeys.contains(tourismKey);
 }
 
 final compareModeProvider = StateProvider<bool>((ref) => false);
@@ -184,3 +173,33 @@ final secondCompareProvinceProvider = Provider<ProvinceModel?>((ref) {
 final selectedRegionFilterProvider = StateProvider<String?>((ref) => null);
 
 final featuredTravelModeProvider = StateProvider<bool>((ref) => false);
+
+final communeLocalDataSourceProvider = Provider<CommuneLocalDataSource>((ref) {
+  return CommuneLocalDataSource();
+});
+
+final communesByProvinceProvider = FutureProvider.family<List<CommuneModel>, String>((ref, provinceId) async {
+  final dataSource = ref.read(communeLocalDataSourceProvider);
+  return dataSource.loadCommunesForProvince(provinceId);
+});
+
+final selectedCommuneProvider = Provider<CommuneModel?>((ref) {
+  final selectedCommuneId = ref.watch(selectedCommuneIdProvider);
+  final selectedProvinceId = ref.watch(selectedProvinceIdProvider);
+
+  if (selectedCommuneId == null || selectedProvinceId == null) {
+    return null;
+  }
+
+  final communes = ref.watch(communesByProvinceProvider(selectedProvinceId)).valueOrNull;
+  if (communes == null) return null;
+
+  for (final commune in communes) {
+    if (commune.id == selectedCommuneId) {
+      return commune;
+    }
+  }
+  return null;
+});
+
+final communeModeProvider = StateProvider<bool>((ref) => false);
