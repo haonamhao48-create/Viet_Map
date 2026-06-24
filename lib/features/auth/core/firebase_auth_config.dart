@@ -10,26 +10,31 @@ class FirebaseAuthConfig {
   FirebaseAuthConfig._();
 
   static const _envKey = 'GOOGLE_WEB_CLIENT_ID';
+  static bool _initialized = false;
 
   static String get webClientId => dotenv.env[_envKey]?.trim() ?? '';
 
   static Future<void> ensureGoogleSignInInitialized() async {
-    if (GoogleSignIn.instance.supportsAuthenticate()) {
-      final needsClientId = kIsWeb ||
-          defaultTargetPlatform == TargetPlatform.windows ||
-          defaultTargetPlatform == TargetPlatform.linux;
+    if (_initialized) {
+      return;
+    }
 
-      if (needsClientId && webClientId.isEmpty) {
-        throw StateError(
-          'Chưa cấu hình $_envKey trong file .env. '
-          'Xem hướng dẫn trong docs/FIREBASE_AUTH_SETUP.md',
-        );
-      }
+    final needsClientId = kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux;
 
-      await GoogleSignIn.instance.initialize(
-        clientId: needsClientId ? webClientId : null,
-        serverClientId: webClientId.isEmpty ? null : webClientId,
+    if (needsClientId && webClientId.isEmpty) {
+      throw StateError(
+        'Chưa cấu hình $_envKey trong file .env. '
+        'Xem hướng dẫn trong docs/FIREBASE_AUTH_SETUP.md',
       );
     }
+
+    await GoogleSignIn.instance.initialize(
+      clientId: needsClientId ? webClientId : null,
+      serverClientId: webClientId.isEmpty ? null : webClientId,
+    );
+
+    _initialized = true;
   }
 }

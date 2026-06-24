@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../providers/auth_provider.dart';
 
@@ -108,9 +110,22 @@ class LoginScreen extends ConsumerWidget {
   }
 
   String _friendlyError(Object error) {
+    if (error is GoogleSignInException) {
+      if (error.code == GoogleSignInExceptionCode.canceled) {
+        return 'Đăng nhập bị hủy hoặc cấu hình Google chưa đúng. '
+            'Kiểm tra SHA-1, package name và google-services.json trên Firebase.';
+      }
+      return 'Google Sign-In lỗi: ${error.description ?? error.code.name}';
+    }
+
+    if (error is FirebaseAuthException) {
+      return error.message ?? 'Firebase Auth lỗi: ${error.code}';
+    }
+
     final message = error.toString();
     if (message.contains('GOOGLE_WEB_CLIENT_ID') || message.contains('.env')) {
-      return 'Chưa cấu hình GOOGLE_WEB_CLIENT_ID trong file .env. Xem docs/FIREBASE_AUTH_SETUP.md';
+      return 'Chưa cấu hình GOOGLE_WEB_CLIENT_ID trong file .env. '
+          'Xem docs/FIREBASE_AUTH_SETUP.md';
     }
     if (message.contains('network')) {
       return 'Lỗi mạng. Vui lòng kiểm tra kết nối internet.';

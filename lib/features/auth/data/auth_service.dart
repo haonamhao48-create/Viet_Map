@@ -15,6 +15,12 @@ class AuthService {
   final FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firestore;
 
+  static const _googleScopes = <String>[
+    'email',
+    'profile',
+    'openid',
+  ];
+
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
   User? get currentUser => _firebaseAuth.currentUser;
@@ -40,13 +46,27 @@ class AuthService {
   Future<UserCredential> signInWithGoogle() async {
     await FirebaseAuthConfig.ensureGoogleSignInInitialized();
 
+    // Tránh lỗi reauth khi còn session Google cũ.
+    await GoogleSignIn.instance.signOut();
+
     final GoogleSignInAccount googleUser =
-        await GoogleSignIn.instance.authenticate();
+        await GoogleSignIn.instance.authenticate(
+      scopeHint: _googleScopes,
+    );
 
     final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+    final idToken = googleAuth.idToken;
+
+    if (idToken == null || idToken.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'missing-id-token',
+        message:
+            'Không lấy được idToken từ Google. Kiểm tra GOOGLE_WEB_CLIENT_ID trong .env.',
+      );
+    }
 
     final credential = GoogleAuthProvider.credential(
-      idToken: googleAuth.idToken,
+      idToken: idToken,
     );
 
     final userCredential =
