@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../auth/presentation/widgets/user_account_header.dart';
 import '../../data/models/province_model.dart';
 import '../../data/models/commune_model.dart';
 import '../../data/models/tourism_destination_model.dart';
@@ -111,6 +112,8 @@ class _MapExplorerPanelState extends ConsumerState<MapExplorerPanel> {
                     filteredCount: filteredProvinces.length,
                     totalCount: provincesAsync.valueOrNull?.length ?? 0,
                   ),
+                  const SizedBox(height: 12),
+                  const UserAccountHeader(),
                   const SizedBox(height: 16),
                   _SearchField(
                     controller: _searchController,

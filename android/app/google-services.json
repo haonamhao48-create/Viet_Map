@@ -12,7 +12,20 @@
           "package_name": "com.example.vn_map_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "166713477101-kqeq4gqop2ctmes7edhfok88vjuj5pas.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.vn_map_app",
+            "certificate_hash": "879c8ab1652a5351371d53a379443de684322ca9"
+          }
+        },
+        {
+          "client_id": "166713477101-v09cj3hm7vclucujp4usha14a3hcrdgj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC695v4Uakna7w-quB_agxnVlbm5qI8C-M"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "166713477101-v09cj3hm7vclucujp4usha14a3hcrdgj.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "166713477101-2vrt8mr1mo5od0hks2aup1kpprluf719.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.vnMapApp"
+              }
+            }
+          ]
         }
       }
     }
