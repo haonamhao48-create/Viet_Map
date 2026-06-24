@@ -1,0 +1,24 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: viet-map-data-converter
+
+vietmap:
+  converter:
+    # Thư mục gốc Flutter project (relative tới backend/data-converter)
+    project-root: ../..
+    backup-before-write: true
+    simplify-tolerance: 0.00008
+    coordinate-precision: 6
+    sources:
+      communes: assets/geo/communes.geojson
+      vietnam-complete: assets/geo/vietnam_complete.geojson
+      tourism: assets/data/tourism_destinations.json
+    outputs:
+      communes-merged: assets/geo/communes.geojson
+      vietnam-complete: assets/geo/vietnam_complete.geojson
+      tourism: assets/data/tourism_destinations.json
+      split-communes-dir: assets/geo/communes_by_province
+      split-manifest: assets/geo/communes_by_province/manifest.json
