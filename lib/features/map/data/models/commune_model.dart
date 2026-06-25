@@ -3,6 +3,7 @@ import 'province_polygon.dart'; // We can reuse ProvincePolygon or rename it to 
 
 class CommuneModel {
   final String id;
+  final String ma;
   final String name;
   final String type;
   final String parentMa;
@@ -15,6 +16,7 @@ class CommuneModel {
 
   CommuneModel({
     required this.id,
+    required this.ma,
     required this.name,
     required this.type,
     required this.parentMa,
@@ -32,6 +34,7 @@ class CommuneModel {
 
     return CommuneModel(
       id: properties['id']?.toString() ?? properties['ma']?.toString() ?? '',
+      ma: properties['ma']?.toString() ?? '',
       name: properties['ten']?.toString() ?? '',
       type: properties['type']?.toString() ?? '',
       parentMa: properties['parent_ma']?.toString() ?? '',

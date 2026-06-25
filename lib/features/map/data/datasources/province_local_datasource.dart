@@ -10,11 +10,12 @@ class ProvinceLocalDataSource {
     final rawString = await rootBundle.loadString(
       'assets/data/provinces_compact.json',
     );
-    return compute(_parseCompactProvinces, rawString);
+    return compute(parseCompactProvinces, rawString);
   }
 }
 
-List<ProvinceModel> _parseCompactProvinces(String rawString) {
+@pragma('vm:entry-point')
+List<ProvinceModel> parseCompactProvinces(String rawString) {
   final rows = jsonDecode(rawString) as List<dynamic>;
 
   return rows
