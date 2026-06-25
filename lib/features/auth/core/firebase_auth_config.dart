@@ -21,28 +21,32 @@ class FirebaseAuthConfig {
   }
 
   static GoogleSignIn createGoogleSignIn() {
-    final needsClientId = kIsWeb ||
+    const scopes = ['email', 'profile'];
+
+    if (kIsWeb ||
         defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux;
-
-    if (needsClientId && webClientId.isEmpty) {
-      throw StateError(
-        'Chưa cấu hình $_envKey trong file .env. '
-        'Xem hướng dẫn trong docs/FIREBASE_AUTH_SETUP.md',
-      );
-    }
-
-    // v6 dùng GoogleSignInClient ổn định hơn Credential Manager (v7) trên OEM Android.
-    if (needsClientId) {
+        defaultTargetPlatform == TargetPlatform.linux) {
+      if (webClientId.isEmpty) {
+        throw StateError(
+          'Chưa cấu hình $_envKey trong file .env. '
+          'Xem hướng dẫn trong docs/FIREBASE_AUTH_SETUP.md',
+        );
+      }
       return GoogleSignIn(
         clientId: webClientId,
-        scopes: const ['email', 'profile'],
+        scopes: scopes,
       );
     }
 
-    return GoogleSignIn(
-      serverClientId: webClientId,
-      scopes: const ['email', 'profile'],
-    );
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return GoogleSignIn(
+        serverClientId: webClientId,
+        scopes: scopes,
+      );
+    }
+
+    // Android: không truyền serverClientId — plugin đọc default_web_client_id
+    // từ google-services.json (tránh lỗi ApiException: 10 khi override sai).
+    return GoogleSignIn(scopes: scopes);
   }
 }

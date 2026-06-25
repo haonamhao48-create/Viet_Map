@@ -1,7 +1,14 @@
 {
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   },
+  "storage": [
+    {
+      "bucket": "vietmap-9c90d.firebasestorage.app",
+      "rules": "storage.rules"
+    }
+  ],
   "flutter": {
     "platforms": {
       "android": {

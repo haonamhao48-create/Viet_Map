@@ -62,11 +62,6 @@ class AuthService {
   }
 
   Future<GoogleSignInAccount> _requestGoogleAccount() async {
-    final silent = await _googleSignIn.signInSilently();
-    if (silent != null) {
-      return silent;
-    }
-
     final account = await _googleSignIn.signIn();
     if (account == null) {
       throw FirebaseAuthException(
@@ -102,7 +97,11 @@ class AuthService {
       return;
     }
 
-    await userRef.update(commonData);
+    await userRef.update({
+      'email': user.email,
+      'lastLoginAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> signOut() async {

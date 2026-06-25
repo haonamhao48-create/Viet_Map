@@ -9,7 +9,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    await dotenv.load(fileName: '.env');
+    await dotenv.load(fileName: 'assets/config/env');
   } catch (_) {
     // Mobile có thể dùng google-services.json nếu thiếu .env.
   }
