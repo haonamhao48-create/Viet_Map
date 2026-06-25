@@ -1,27 +1,29 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../models/commune_model.dart';
 
 class CommuneLocalDataSource {
-  Future<List<CommuneModel>> loadCommunesForProvince(String provinceId) async {
+  Future<List<CommuneModel>> loadCommunesForProvinceSlug(String slug) async {
     try {
       final rawString = await rootBundle.loadString(
-        'assets/geo/provinces/$provinceId.geojson',
+        'assets/geo/provinces/$slug.geojson',
       );
-      return compute(_parseCommunesGeoJson, rawString);
+      return compute(parseCommunesGeoJson, rawString);
     } catch (e) {
-      // If file doesn't exist for this province or failed to load
-      debugPrint('Failed to load communes for province $provinceId: $e');
+      debugPrint('Failed to load communes for province slug $slug: $e');
       return [];
     }
   }
 }
 
-List<CommuneModel> _parseCommunesGeoJson(String rawString) {
+@pragma('vm:entry-point')
+List<CommuneModel> parseCommunesGeoJson(String rawString) {
   try {
-    final data = jsonDecode(rawString) as Map<String, dynamic>;
+    final fixedString = rawString.replaceAll(': NaN', ': null');
+    final data = jsonDecode(fixedString) as Map<String, dynamic>;
     final features = data['features'] as List<dynamic>? ?? [];
 
     return features

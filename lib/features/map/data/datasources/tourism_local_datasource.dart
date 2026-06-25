@@ -11,18 +11,19 @@ class TourismLocalDataSource {
       final rawString = await rootBundle.loadString(
         'assets/data/tourism_destinations.json',
       );
-      return compute(_parseDestinations, rawString);
+      return compute(parseDestinations, rawString);
     } catch (_) {
       // Backward-compatible fallback for old compact dataset.
       final compactRawString = await rootBundle.loadString(
         'assets/data/tourism_destinations_compact.json',
       );
-      return compute(_parseDestinations, compactRawString);
+      return compute(parseDestinations, compactRawString);
     }
   }
 }
 
-List<TourismDestinationModel> _parseDestinations(String rawString) {
+@pragma('vm:entry-point')
+List<TourismDestinationModel> parseDestinations(String rawString) {
   final decoded = jsonDecode(rawString);
   if (decoded is! List) {
     return const [];

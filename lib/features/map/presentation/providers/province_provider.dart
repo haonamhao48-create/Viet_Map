@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 
 import '../../../../core/utils/text_normalizer.dart';
+import '../../../../core/utils/province_geo_asset.dart';
 import '../../data/datasources/province_local_datasource.dart';
 import '../../data/datasources/tourism_local_datasource.dart';
 import '../../data/models/province_model.dart';
@@ -178,9 +179,24 @@ final communeLocalDataSourceProvider = Provider<CommuneLocalDataSource>((ref) {
   return CommuneLocalDataSource();
 });
 
-final communesByProvinceProvider = FutureProvider.family<List<CommuneModel>, String>((ref, provinceId) async {
+final communesByProvinceProvider =
+    FutureProvider.family<List<CommuneModel>, String>((ref, provinceId) async {
+  final provinces = await ref.watch(provincesProvider.future);
+  ProvinceModel? province;
+  for (final item in provinces) {
+    if (item.id == provinceId) {
+      province = item;
+      break;
+    }
+  }
+
+  if (province == null) {
+    return const [];
+  }
+
+  final slug = provinceGeoAssetSlug(province.displayName);
   final dataSource = ref.read(communeLocalDataSourceProvider);
-  return dataSource.loadCommunesForProvince(provinceId);
+  return dataSource.loadCommunesForProvinceSlug(slug);
 });
 
 final selectedCommuneProvider = Provider<CommuneModel?>((ref) {

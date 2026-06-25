@@ -41,6 +41,36 @@ class _CommuneArea {
   final List<List<List<_MapPoint>>> polygons;
 }
 
+_CommuneArea communeAreaFromModel(CommuneModel commune) {
+  return _CommuneArea(
+    ma: commune.ma.isNotEmpty ? commune.ma : commune.id,
+    parentMa: commune.parentMa,
+    name: commune.name,
+    type: commune.type,
+    areaKm2: commune.areaKm2,
+    population: commune.population,
+    density: commune.density,
+    capital: commune.rawProperties['capital']?.toString() ?? '',
+    predecessors: commune.rawProperties['predecessors']?.toString() ?? '',
+    polygons: commune.polygons
+        .map(
+          (polygon) => polygon.rings
+              .map(
+                (ring) => ring
+                    .map(
+                      (point) => _MapPoint(
+                        longitude: point.longitude,
+                        latitude: point.latitude,
+                      ),
+                    )
+                    .toList(growable: false),
+              )
+              .toList(growable: false),
+        )
+        .toList(growable: false),
+  );
+}
+
 /// Một toạ độ địa lý (lon/lat).
 class _MapPoint {
   const _MapPoint({
