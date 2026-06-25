@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,6 +11,10 @@ class AuthGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<AsyncValue<User?>>(authStateProvider, (_, __) {
+      ref.read(authLoadingProvider.notifier).state = false;
+    });
+
     final authState = ref.watch(authStateProvider);
 
     return authState.when(

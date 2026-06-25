@@ -6,8 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/datasources/tourism_local_datasource.dart';
+import '../../data/datasources/high_school_firestore_datasource.dart';
+import '../../data/models/high_school_model.dart';
 import '../../data/models/province_model.dart';
 import '../../data/models/tourism_destination_model.dart';
+import '../../../school_visits/presentation/widgets/school_visit_notes_section.dart';
 
 part 'travel_map_models.dart';
 part 'travel_map_view.dart';
@@ -114,6 +117,8 @@ class _TravelPlacesScreenState extends State<TravelPlacesScreen> {
 
       result.add(
         _CommuneArea(
+          ma: properties['ma']?.toString() ?? '',
+          parentMa: properties['parent_ma']?.toString() ?? '',
           name: communeName,
           type: properties['type']?.toString() ?? '',
           areaKm2: (properties['area_km2'] as num?)?.toDouble(),

@@ -1,15 +1,29 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 import '../providers/auth_provider.dart';
 
-class LoginScreen extends ConsumerWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(authLoadingProvider.notifier).state = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final isLoading = ref.watch(authLoadingProvider);
     final theme = Theme.of(context);
 
@@ -64,9 +78,7 @@ class LoginScreen extends ConsumerWidget {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
-                        onPressed: isLoading
-                            ? null
-                            : () => _signIn(context, ref),
+                        onPressed: isLoading ? null : _signIn,
                         icon: isLoading
                             ? const SizedBox(
                                 width: 18,
@@ -94,28 +106,31 @@ class LoginScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _signIn(BuildContext context, WidgetRef ref) async {
+  Future<void> _signIn() async {
     ref.read(authLoadingProvider.notifier).state = true;
 
     try {
       await ref.read(authServiceProvider).signInWithGoogle();
     } catch (error) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_friendlyError(error))),
       );
     } finally {
+      if (!mounted) return;
       ref.read(authLoadingProvider.notifier).state = false;
     }
   }
 
   String _friendlyError(Object error) {
-    if (error is GoogleSignInException) {
-      if (error.code == GoogleSignInExceptionCode.canceled) {
-        return 'Đăng nhập bị hủy hoặc cấu hình Google chưa đúng. '
-            'Kiểm tra SHA-1, package name và google-services.json trên Firebase.';
+    if (error is PlatformException) {
+      final details = '${error.message ?? ''} ${error.details ?? ''}';
+      if (details.contains('ApiException: 10')) {
+        return 'Cấu hình Google chưa đúng (lỗi 10). '
+            'Kiểm tra SHA-1 trên Firebase, OAuth consent screen (External), '
+            'tải lại google-services.json, rồi flutter clean && flutter run.';
       }
-      return 'Google Sign-In lỗi: ${error.description ?? error.code.name}';
+      return 'Google Sign-In lỗi: ${error.message ?? error.code}';
     }
 
     if (error is FirebaseAuthException) {

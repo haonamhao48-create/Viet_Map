@@ -9,17 +9,14 @@ class AuthService {
   AuthService({
     FirebaseAuth? firebaseAuth,
     FirebaseFirestore? firestore,
+    GoogleSignIn? googleSignIn,
   })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+        _firestore = firestore ?? FirebaseFirestore.instance,
+        _googleSignIn = googleSignIn ?? FirebaseAuthConfig.createGoogleSignIn();
 
   final FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firestore;
-
-  static const _googleScopes = <String>[
-    'email',
-    'profile',
-    'openid',
-  ];
+  final GoogleSignIn _googleSignIn;
 
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
@@ -44,37 +41,35 @@ class AuthService {
   }
 
   Future<UserCredential> signInWithGoogle() async {
-    await FirebaseAuthConfig.ensureGoogleSignInInitialized();
-
-    // Tránh lỗi reauth khi còn session Google cũ.
-    await GoogleSignIn.instance.signOut();
-
-    final GoogleSignInAccount googleUser =
-        await GoogleSignIn.instance.authenticate(
-      scopeHint: _googleScopes,
-    );
-
-    final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+    final googleUser = await _requestGoogleAccount();
+    final googleAuth = await googleUser.authentication;
     final idToken = googleAuth.idToken;
 
     if (idToken == null || idToken.isEmpty) {
       throw FirebaseAuthException(
         code: 'missing-id-token',
         message:
-            'Không lấy được idToken từ Google. Kiểm tra GOOGLE_WEB_CLIENT_ID trong .env.',
+            'Không lấy được idToken từ Google. Kiểm tra serverClientId (Web Client ID) trên Firebase.',
       );
     }
 
-    final credential = GoogleAuthProvider.credential(
-      idToken: idToken,
+    final userCredential = await _firebaseAuth.signInWithCredential(
+      GoogleAuthProvider.credential(idToken: idToken),
     );
 
-    final userCredential =
-        await _firebaseAuth.signInWithCredential(credential);
-
     await _saveUserToFirestore(userCredential.user);
-
     return userCredential;
+  }
+
+  Future<GoogleSignInAccount> _requestGoogleAccount() async {
+    final account = await _googleSignIn.signIn();
+    if (account == null) {
+      throw FirebaseAuthException(
+        code: 'google-sign-in-canceled',
+        message: 'Đăng nhập Google bị hủy.',
+      );
+    }
+    return account;
   }
 
   Future<void> _saveUserToFirestore(User? user) async {
@@ -102,11 +97,15 @@ class AuthService {
       return;
     }
 
-    await userRef.update(commonData);
+    await userRef.update({
+      'email': user.email,
+      'lastLoginAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> signOut() async {
-    await GoogleSignIn.instance.signOut();
+    await _googleSignIn.signOut();
     await _firebaseAuth.signOut();
   }
 }

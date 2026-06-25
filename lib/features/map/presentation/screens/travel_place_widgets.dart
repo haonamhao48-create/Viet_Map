@@ -411,6 +411,10 @@ class _PlaceBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const pinWidth = 34.0;
+    const pinHeight = 42.0;
+    const labelMaxWidth = 230.0;
+
     return Tooltip(
       message: place.description,
       child: Material(
@@ -418,65 +422,77 @@ class _PlaceBubble extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(999),
           onTap: onTap,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _NumberedPin(
-                index: index,
-                isSelected: isSelected,
-                isInRoute: isInRoute,
-              ),
-              if (showLabel) ...[
-                const SizedBox(height: 6),
-                Container(
-                  constraints: const BoxConstraints(maxWidth: 230),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.teal : Colors.white,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: Colors.teal.withValues(alpha: 0.55),
-                      width: isSelected ? 2 : 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 14,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircleAvatar(
-                        radius: 12,
-                        backgroundColor: isSelected ? Colors.white : Colors.teal,
-                        child: Text(
-                          '$index',
-                          style: TextStyle(
-                            color: isSelected ? Colors.teal : Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          place.name,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.black87,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+          child: SizedBox(
+            width: pinWidth,
+            height: pinHeight,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                _NumberedPin(
+                  index: index,
+                  isSelected: isSelected,
+                  isInRoute: isInRoute,
                 ),
+                if (showLabel)
+                  Positioned(
+                    top: pinHeight + 6,
+                    left: -(labelMaxWidth - pinWidth) / 2,
+                    width: labelMaxWidth,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.teal : Colors.white,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: Colors.teal.withValues(alpha: 0.55),
+                          width: isSelected ? 2 : 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundColor:
+                                isSelected ? Colors.white : Colors.teal,
+                            child: Text(
+                              '$index',
+                              style: TextStyle(
+                                color: isSelected ? Colors.teal : Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              place.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color:
+                                    isSelected ? Colors.white : Colors.black87,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
-            ],
+            ),
           ),
         ),
       ),

@@ -8,6 +8,8 @@ class AppUserModel {
     required this.avatarUrl,
     required this.role,
     required this.provider,
+    this.phone,
+    this.bio,
     this.createdAt,
     this.lastLoginAt,
   });
@@ -16,6 +18,8 @@ class AppUserModel {
   final String? email;
   final String? fullName;
   final String? avatarUrl;
+  final String? phone;
+  final String? bio;
   final String role;
   final String provider;
   final DateTime? createdAt;
@@ -31,6 +35,8 @@ class AppUserModel {
       email: data['email']?.toString(),
       fullName: data['fullName']?.toString(),
       avatarUrl: data['avatarUrl']?.toString(),
+      phone: data['phone']?.toString(),
+      bio: data['bio']?.toString(),
       role: data['role']?.toString() ?? 'user',
       provider: data['provider']?.toString() ?? 'google',
       createdAt: _toDateTime(data['createdAt']),

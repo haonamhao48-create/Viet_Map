@@ -7,6 +7,7 @@ class _DetailedProvincePainter extends CustomPainter {
     required this.province,
     required this.communes,
     required this.isCommuneMode,
+    required this.schoolMapMode,
     required this.selectedCommuneName,
     required this.scaledCommunePaths,
     required this.scaledProvincePath,
@@ -16,6 +17,7 @@ class _DetailedProvincePainter extends CustomPainter {
   final ProvinceModel province;
   final List<_CommuneArea> communes;
   final bool isCommuneMode;
+  final bool schoolMapMode;
   final String? selectedCommuneName;
   final Map<String, Path> scaledCommunePaths;
   final Path scaledProvincePath;
@@ -41,18 +43,24 @@ class _DetailedProvincePainter extends CustomPainter {
         if (path == null) continue;
 
         final isSelectedCommune = commune.name == selectedCommuneName;
-        final communeColor = _colorForCommune(commune.name, provinceColor);
+        final communeColor = schoolMapMode
+            ? provinceColor.withValues(alpha: 0.55)
+            : _colorForCommune(commune.name, provinceColor);
 
         final fillPaint = Paint()
-          ..color = isSelectedCommune
-              ? Colors.black.withValues(alpha: 0.70)
-              : communeColor.withValues(alpha: 0.65)
+          ..color = schoolMapMode
+              ? communeColor
+              : (isSelectedCommune
+                  ? Colors.black.withValues(alpha: 0.70)
+                  : communeColor.withValues(alpha: 0.65))
           ..style = PaintingStyle.fill;
 
         final borderPaint = Paint()
-          ..color = isSelectedCommune ? Colors.black : Colors.white.withValues(alpha: 0.95)
+          ..color = schoolMapMode
+              ? provinceColor
+              : (isSelectedCommune ? Colors.black : Colors.white.withValues(alpha: 0.95))
           ..style = PaintingStyle.stroke
-          ..strokeWidth = isSelectedCommune ? 3 : 1.2;
+          ..strokeWidth = schoolMapMode ? 3 : (isSelectedCommune ? 3 : 1.2);
 
         canvas.drawPath(path, fillPaint);
         canvas.drawPath(path, borderPaint);
@@ -138,6 +146,7 @@ class _DetailedProvincePainter extends CustomPainter {
     return oldDelegate.province != province ||
         oldDelegate.communes != communes ||
         oldDelegate.isCommuneMode != isCommuneMode ||
+        oldDelegate.schoolMapMode != schoolMapMode ||
         oldDelegate.selectedCommuneName != selectedCommuneName ||
         oldDelegate.scaledCommunePaths != scaledCommunePaths;
   }
