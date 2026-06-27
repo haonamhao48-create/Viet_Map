@@ -57,19 +57,10 @@ class _TravelPlacesScreenState extends State<TravelPlacesScreen> {
   }
 
   Future<_TravelMapData> _loadMapData() async {
-    if (widget.isCommuneMode) {
-      final communes = await _loadCommunes();
-      return _TravelMapData(
-        places: const [],
-        communes: communes,
-      );
-    }
-
-    final places = await _loadPlaces();
-    return _TravelMapData(
-      places: places,
-      communes: const [],
-    );
+    final communes = await _loadCommunes();
+    final places =
+        widget.isCommuneMode ? const <TourismDestinationModel>[] : await _loadPlaces();
+    return _TravelMapData(places: places, communes: communes);
   }
 
   Future<List<_CommuneArea>> _loadCommunes() async {
