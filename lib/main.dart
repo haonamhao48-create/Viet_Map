@@ -8,15 +8,24 @@ import 'app/app.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Firebase and load dotenv in parallel to optimize startup time
   try {
-    await dotenv.load(fileName: 'assets/config/env');
-  } catch (_) {
-    // Mobile có thể dùng google-services.json nếu thiếu .env.
+    await Future.wait([
+      dotenv.load(fileName: 'assets/config/env').catchError((_) {
+        debugPrint('Dotenv load failed, skipping...');
+      }),
+      Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      ),
+    ]);
+  } catch (e) {
+    debugPrint('Parallel init failed: $e. Retrying Firebase alone...');
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (_) {}
   }
-
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
 
   runApp(
     const ProviderScope(

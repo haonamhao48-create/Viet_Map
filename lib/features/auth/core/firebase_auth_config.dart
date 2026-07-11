@@ -7,6 +7,8 @@ class FirebaseAuthConfig {
   FirebaseAuthConfig._();
 
   static const _envKey = 'GOOGLE_WEB_CLIENT_ID';
+  static const _desktopEnvKey = 'GOOGLE_DESKTOP_CLIENT_ID';
+  static const _secretKey = 'GOOGLE_CLIENT_SECRET';
 
   /// Fallback khớp `default_web_client_id` trong google-services.json.
   static const fallbackWebClientId =
@@ -20,20 +22,40 @@ class FirebaseAuthConfig {
     return fallbackWebClientId;
   }
 
+  static String get desktopClientId {
+    final fromEnv = dotenv.env[_desktopEnvKey]?.trim() ?? '';
+    if (fromEnv.isNotEmpty) {
+      return fromEnv;
+    }
+    return webClientId; // fallback
+  }
+
+  static String get clientSecret {
+    return dotenv.env[_secretKey]?.trim() ?? '';
+  }
+
   static GoogleSignIn createGoogleSignIn() {
     const scopes = ['email', 'profile'];
 
-    if (kIsWeb ||
-        defaultTargetPlatform == TargetPlatform.windows ||
+    if (kIsWeb) {
+      return GoogleSignIn(
+        clientId: webClientId,
+        scopes: scopes,
+      );
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.linux) {
-      if (webClientId.isEmpty) {
+      final cid = desktopClientId;
+      debugPrint('[DEBUG AUTH] Loading Google Sign-In Client ID for Desktop: $cid');
+      if (cid.isEmpty) {
         throw StateError(
-          'Chưa cấu hình $_envKey trong file .env. '
+          'Chưa cấu hình $_desktopEnvKey trong file env. '
           'Xem hướng dẫn trong docs/FIREBASE_AUTH_SETUP.md',
         );
       }
       return GoogleSignIn(
-        clientId: webClientId,
+        clientId: cid,
         scopes: scopes,
       );
     }

@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../map/presentation/screens/map_desktop_screen.dart';
+import '../../../map/presentation/screens/map_screen.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 
@@ -23,7 +23,7 @@ class AuthGate extends ConsumerWidget {
           return const LoginScreen();
         }
 
-        return const MapDesktopScreen();
+        return const MapScreen();
       },
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),

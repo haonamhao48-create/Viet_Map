@@ -24,10 +24,10 @@ class UserAccountHeader extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF0F766E).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          color: const Color(0xFF2DD4BF).withValues(alpha: 0.2),
         ),
       ),
       child: Row(
@@ -54,6 +54,7 @@ class UserAccountHeader extends ConsumerWidget {
                                     : '?',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w700,
+                                  color: Colors.white,
                                 ),
                               )
                             : null,
@@ -69,6 +70,7 @@ class UserAccountHeader extends ConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.w700,
+                                color: Colors.white,
                               ),
                             ),
                             if (email.isNotEmpty)
@@ -77,13 +79,14 @@ class UserAccountHeader extends ConsumerWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
+                                  color: Colors.white54,
                                 ),
                               ),
                             Text(
                               'Chạm để chỉnh sửa hồ sơ',
                               style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.primary,
+                                color: const Color(0xFF2DD4BF),
+                                fontSize: 11,
                               ),
                             ),
                           ],
@@ -101,7 +104,7 @@ class UserAccountHeader extends ConsumerWidget {
               ref.read(authLoadingProvider.notifier).state = false;
               await ref.read(authServiceProvider).signOut();
             },
-            icon: const Icon(Icons.logout_rounded),
+            icon: const Icon(Icons.logout_rounded, color: Colors.white54),
           ),
         ],
       ),

@@ -27,4 +27,16 @@ class HighSchoolFirestoreDataSource {
 
     return schools;
   }
+
+  Future<List<HighSchoolModel>> getAll() async {
+    final snapshot = await _firestore.collection('high_schools').get();
+
+    final schools = snapshot.docs
+        .map(HighSchoolModel.fromFirestore)
+        .where((school) => school.tenTruong.isNotEmpty)
+        .toList()
+      ..sort((a, b) => a.tenTruong.compareTo(b.tenTruong));
+
+    return schools;
+  }
 }

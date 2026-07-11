@@ -60,11 +60,23 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final displayName = _nameController.text.trim();
 
     return Scaffold(
+      backgroundColor: const Color(0xFF0B1F1E),
       appBar: AppBar(
-        title: const Text('Hồ sơ cá nhân'),
+        backgroundColor: const Color(0xFF0F766E),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        toolbarHeight: 56,
+        title: const Text(
+          'Hồ sơ cá nhân',
+          style: TextStyle(
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
@@ -76,24 +88,34 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                   Center(
                     child: Stack(
                       children: [
-                        CircleAvatar(
-                          radius: 56,
-                          backgroundImage: _avatarImage(avatarUrl),
-                          child: _avatarImage(avatarUrl) == null
-                              ? Text(
-                                  displayName.isNotEmpty
-                                      ? displayName[0].toUpperCase()
-                                      : '?',
-                                  style: theme.textTheme.headlineMedium
-                                      ?.copyWith(fontWeight: FontWeight.w700),
-                                )
-                              : null,
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFF0F766E).withValues(alpha: 0.4),
+                              width: 2,
+                            ),
+                          ),
+                          child: CircleAvatar(
+                            radius: 60,
+                            backgroundColor: Colors.white.withValues(alpha: 0.1),
+                            backgroundImage: _avatarImage(avatarUrl),
+                            child: _avatarImage(avatarUrl) == null
+                                ? Text(
+                                    displayName.isNotEmpty
+                                        ? displayName[0].toUpperCase()
+                                        : '?',
+                                    style: theme.textTheme.headlineMedium
+                                        ?.copyWith(fontWeight: FontWeight.w700, color: Colors.white),
+                                  )
+                                : null,
+                          ),
                         ),
                         Positioned(
                           right: 0,
                           bottom: 0,
                           child: Material(
-                            color: theme.colorScheme.primary,
+                            color: const Color(0xFF0F766E).withValues(alpha: 0.3),
                             shape: const CircleBorder(),
                             child: InkWell(
                               customBorder: const CircleBorder(),
@@ -117,7 +139,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                     child: Text(
                       'Chạm biểu tượng camera để đổi ảnh đại diện',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                        color: Colors.white38,
+                        fontSize: 12,
                       ),
                     ),
                   ),
@@ -125,9 +148,27 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                   TextFormField(
                     controller: _nameController,
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
                       labelText: 'Họ và tên',
-                      prefixIcon: Icon(Icons.person_outline_rounded),
+                      labelStyle: const TextStyle(color: Colors.white54),
+                      hintStyle: const TextStyle(color: Colors.white30),
+                      prefixIcon: const Icon(Icons.person_outline_rounded),
+                      prefixIconColor: Colors.white38,
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.07),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Color(0xFF0F766E), width: 1.5),
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -140,9 +181,27 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                   TextFormField(
                     controller: _emailController,
                     readOnly: true,
-                    decoration: const InputDecoration(
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
                       labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
+                      labelStyle: const TextStyle(color: Colors.white54),
+                      hintStyle: const TextStyle(color: Colors.white30),
+                      prefixIcon: const Icon(Icons.email_outlined),
+                      prefixIconColor: Colors.white38,
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.07),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Color(0xFF0F766E), width: 1.5),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -150,10 +209,28 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
                       labelText: 'Số điện thoại',
                       hintText: 'Tùy chọn',
-                      prefixIcon: Icon(Icons.phone_outlined),
+                      labelStyle: const TextStyle(color: Colors.white54),
+                      hintStyle: const TextStyle(color: Colors.white30),
+                      prefixIcon: const Icon(Icons.phone_outlined),
+                      prefixIconColor: Colors.white38,
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.07),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Color(0xFF0F766E), width: 1.5),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -161,16 +238,43 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                     controller: _bioController,
                     maxLines: 3,
                     textInputAction: TextInputAction.done,
-                    decoration: const InputDecoration(
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
                       labelText: 'Giới thiệu',
                       hintText: 'Viết vài dòng về bạn...',
                       alignLabelWithHint: true,
-                      prefixIcon: Icon(Icons.notes_rounded),
+                      labelStyle: const TextStyle(color: Colors.white54),
+                      hintStyle: const TextStyle(color: Colors.white30),
+                      prefixIcon: const Icon(Icons.notes_rounded),
+                      prefixIconColor: Colors.white38,
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.07),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Color(0xFF0F766E), width: 1.5),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 28),
                   FilledButton.icon(
                     onPressed: _isSaving ? null : _saveProfile,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF0F766E),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     icon: _isSaving
                         ? const SizedBox(
                             width: 18,
