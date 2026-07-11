@@ -240,6 +240,33 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
       }
     });
 
+    // Listen for search results changes to automatically zoom and center them
+    ref.listen<List<HighSchoolModel>>(filteredSchoolsProvider, (previous, next) {
+      final query = ref.read(schoolSearchQueryProvider).trim();
+      if (query.isNotEmpty && next.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final validCoords = next.where((s) => s.hasValidCoordinates).toList();
+          if (validCoords.isNotEmpty) {
+            if (validCoords.length == 1) {
+              final school = validCoords.first;
+              _mapController.move(LatLng(school.latitude, school.longitude), 13.0);
+            } else {
+              final bounds = LatLngBounds.fromPoints(
+                validCoords.map((s) => LatLng(s.latitude, s.longitude)).toList(),
+              );
+              _mapController.fitCamera(
+                CameraFit.bounds(
+                  bounds: bounds,
+                  padding: const EdgeInsets.all(64.0),
+                ),
+              );
+            }
+          }
+        });
+      }
+    });
+
     return schoolsAsync.when(
       data: (_) {
         // 1. Calculate school count for each province dynamically
@@ -289,8 +316,10 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
 
         final List<Marker> markers;
         final List<Polygon> mapPolygons = [];
+        final searchQuery = ref.watch(schoolSearchQueryProvider).trim();
+        final isSearching = searchQuery.isNotEmpty;
 
-        if (_currentZoom < 7.0) {
+        if (_currentZoom < 7.0 && !isSearching) {
           // Level 1: Region View - Draw actual region boundaries (by painting its provinces)
           for (var region in regionsList) {
             final color = _getRegionColor(region.name);
@@ -342,7 +371,7 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
           // 1. Get visible school markers
           var visibleSchools = filteredSchools.where((s) {
             if (!s.hasValidCoordinates) return false;
-            if (_visibleBounds == null) return true;
+            if (_visibleBounds == null || isSearching) return true;
             return _visibleBounds!.contains(LatLng(s.latitude, s.longitude));
           }).toList();
 
@@ -364,6 +393,7 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
             ...criticalSchools.where((s) => !visibleIds.contains(s.id)),
           ];
 
+
           const maxVisibleMarkers = 200;
           if (visibleSchools.length > maxVisibleMarkers) {
             final step = (visibleSchools.length / maxVisibleMarkers).ceil();
@@ -381,11 +411,12 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
             final isSelected = selectedSchool?.id == school.id;
             final isStart = startSchool?.id == school.id;
             final isEnd = endSchool?.id == school.id;
+            final markerSize = isSelected || isStart || isEnd ? 48.0 : 36.0;
 
             return Marker(
               point: LatLng(school.latitude, school.longitude),
-              width: isSelected || isStart || isEnd ? 48.0 : 36.0,
-              height: isSelected || isStart || isEnd ? 48.0 : 36.0,
+              width: markerSize,
+              height: markerSize,
               child: GestureDetector(
                 onTap: () {
                   ref.read(selectedSchoolIdProvider.notifier).state = school.id;
@@ -394,6 +425,8 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
                   cursor: SystemMouseCursors.click,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
+                    width: markerSize,
+                    height: markerSize,
                     decoration: BoxDecoration(
                       color: isStart
                           ? Colors.green.shade600
@@ -427,7 +460,7 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
             );
           }).toList();
 
-          if (_currentZoom < 9.5) {
+          if (_currentZoom < 9.5 && !isSearching) {
             // Level 2: Province view - draw province boundaries and labels
             for (var prov in provincesStatsList) {
               final rings = _provinceBoundaries[prov.name];
@@ -551,6 +584,7 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
                 
                 // Deselect if tapping the map empty space
                 ref.read(selectedSchoolIdProvider.notifier).state = null;
+                ref.read(schoolSearchQueryProvider.notifier).state = '';
               },
             ),
             children: [

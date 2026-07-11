@@ -26,7 +26,7 @@ class RouteInfoCard extends ConsumerWidget {
       ),
       color: theme.colorScheme.surfaceContainerHighest,
       child: Container(
-        width: 340,
+        width: MediaQuery.of(context).size.width >= 800 ? 340 : null,
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,

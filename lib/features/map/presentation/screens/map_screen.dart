@@ -7,6 +7,7 @@ import '../providers/route_provider.dart';
 import '../widgets/school_map.dart';
 import '../widgets/route_info_card.dart';
 import '../../../school_visits/presentation/widgets/school_visit_notes_section.dart';
+import '../../../auth/presentation/widgets/user_account_header.dart';
 import '../../data/models/high_school_model.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
@@ -31,117 +32,116 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final authState = ref.watch(authStateProvider);
     final userProfile = ref.watch(currentUserProfileProvider).valueOrNull;
     final selectedSchool = ref.watch(selectedSchoolProvider);
+    final startSchool = ref.watch(startSchoolProvider);
+    final endSchool = ref.watch(endSchoolProvider);
     
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width >= 800;
 
+    ref.listen<String>(schoolSearchQueryProvider, (prev, next) {
+      if (_searchController.text != next) {
+        _searchController.text = next;
+      }
+    });
+
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(56 + 1),
-        child: Column(
-          children: [
-            AppBar(
-              toolbarHeight: 56,
-              elevation: 0,
-              title: Text(
-                'BẢN ĐỒ KHẢO SÁT TRƯỜNG HỌC',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.8,
-                  fontSize: 13,
-                  color: Colors.white,
-                ),
-              ),
-              backgroundColor: const Color(0xFF0F766E),
-              iconTheme: const IconThemeData(color: Colors.white),
-              leading: !isDesktop
-                  ? Builder(
-                      builder: (context) => IconButton(
-                        icon: const Icon(Icons.menu_rounded),
-                        tooltip: 'Mở rộng menu',
-                        onPressed: () => Scaffold.of(context).openDrawer(),
+      appBar: isDesktop
+          ? PreferredSize(
+              preferredSize: const Size.fromHeight(56 + 1),
+              child: Column(
+                children: [
+                  AppBar(
+                    toolbarHeight: 56,
+                    elevation: 0,
+                    title: Text(
+                      'BẢN ĐỒ KHẢO SÁT TRƯỜNG HỌC',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.8,
+                        fontSize: 13,
+                        color: Colors.white,
                       ),
-                    )
-                  : null,
-              actions: [
-                if (userProfile != null || authState.valueOrNull != null) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Row(
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 1.5),
-                          ),
-                          child: CircleAvatar(
-                            radius: 17,
-                            backgroundImage: userProfile?.avatarUrl != null
-                                ? NetworkImage(userProfile!.avatarUrl!)
-                                : (authState.valueOrNull?.photoURL != null
-                                    ? NetworkImage(authState.valueOrNull!.photoURL!)
-                                    : null),
-                            child: (userProfile?.avatarUrl == null && authState.valueOrNull?.photoURL == null)
-                                ? const Icon(Icons.person, size: 18, color: Colors.white)
-                                : null,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        if (isDesktop)
-                          Text(
-                            userProfile?.fullName ?? authState.valueOrNull?.displayName ?? authState.valueOrNull?.email ?? '',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                      ],
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.logout_rounded),
-                    color: Colors.white,
-                    tooltip: 'Đăng xuất',
-                    onPressed: () async {
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Đăng xuất'),
-                          content: const Text('Bạn có chắc chắn muốn đăng xuất?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text('Hủy'),
-                            ),
-                            FilledButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: const Text('Đăng xuất'),
-                            ),
-                          ],
+                    backgroundColor: const Color(0xFF0F766E),
+                    iconTheme: const IconThemeData(color: Colors.white),
+                    actions: [
+                      if (userProfile != null || authState.valueOrNull != null) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Row(
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 1.5),
+                                ),
+                                child: CircleAvatar(
+                                  radius: 17,
+                                  backgroundImage: userProfile?.avatarUrl != null
+                                      ? NetworkImage(userProfile!.avatarUrl!)
+                                      : (authState.valueOrNull?.photoURL != null
+                                          ? NetworkImage(authState.valueOrNull!.photoURL!)
+                                          : null),
+                                  child: (userProfile?.avatarUrl == null && authState.valueOrNull?.photoURL == null)
+                                      ? const Icon(Icons.person, size: 18, color: Colors.white)
+                                      : null,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                userProfile?.fullName ?? authState.valueOrNull?.displayName ?? authState.valueOrNull?.email ?? '',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      );
-                      if (confirm == true) {
-                        await ref.read(authServiceProvider).signOut();
-                      }
-                    },
+                        IconButton(
+                          icon: const Icon(Icons.logout_rounded),
+                          color: Colors.white,
+                          tooltip: 'Đăng xuất',
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Đăng xuất'),
+                                content: const Text('Bạn có chắc chắn muốn đăng xuất?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('Hủy'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: const Text('Đăng xuất'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              await ref.read(authServiceProvider).signOut();
+                            }
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                  Container(
+                    height: 1,
+                    color: const Color(0xFF0F766E).withValues(alpha: 0.4),
                   ),
                 ],
-              ],
-            ),
-            Container(
-              height: 1,
-              color: const Color(0xFF0F766E).withValues(alpha: 0.4),
-            ),
-          ],
-        ),
-      ),
+              ),
+            )
+          : null,
       drawer: !isDesktop
           ? Drawer(
+              backgroundColor: const Color(0xFF0B1F1E),
               width: 320,
               child: SafeArea(
-                child: selectedSchool != null
-                    ? _SchoolDetailsPanel(school: selectedSchool)
-                    : _SidebarContent(searchController: _searchController),
+                child: _SidebarContent(searchController: _searchController),
               ),
             )
           : null,
@@ -187,18 +187,30 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             );
           } else {
             // Mobile Responsive Stack
+            final isRouteActive = startSchool != null && endSchool != null;
             return Stack(
               children: [
                 const Positioned.fill(
                   child: SchoolMap(),
                 ),
                 
-                // Floating Route Card
-                const Positioned(
-                  top: 16,
-                  left: 16,
-                  right: 16,
-                  child: RouteInfoCard(),
+                // Floating Search Bar or Route Card
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: isRouteActive
+                      ? SafeArea(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: const RouteInfoCard(),
+                          ),
+                        )
+                      : Builder(
+                          builder: (innerContext) => _MobileSearchBar(
+                            onTapMenu: () => Scaffold.of(innerContext).openDrawer(),
+                          ),
+                        ),
                 ),
                 
                 // Floating School Details Bottom Sheet-like Card
@@ -269,6 +281,11 @@ class _SidebarContent extends ConsumerWidget {
                 ),
               ],
             ),
+          ),
+          const Divider(height: 1, color: Color(0xFF1A3330)),
+          const Padding(
+            padding: EdgeInsets.all(12.0),
+            child: UserAccountHeader(),
           ),
         ],
       ),
@@ -393,6 +410,7 @@ class _SchoolListTab extends ConsumerWidget {
                           selectedTileColor: const Color(0xFF0F766E).withValues(alpha: 0.12),
                           onTap: () {
                             ref.read(selectedSchoolIdProvider.notifier).state = school.id;
+                            ref.read(schoolSearchQueryProvider.notifier).state = school.tenTruong;
                             final width = MediaQuery.of(context).size.width;
                             if (width < 800) {
                               Navigator.pop(context);
@@ -755,6 +773,7 @@ class _RoutePointSelectorCard extends ConsumerWidget {
                               contentPadding: const EdgeInsets.symmetric(vertical: 4),
                               border: InputBorder.none,
                               hintStyle: const TextStyle(color: Color(0x4DFFFFFF), fontStyle: FontStyle.italic, fontSize: 14),
+                              filled: false,
                             ),
                           );
                         },
@@ -807,6 +826,7 @@ class _SchoolDetailsPanel extends ConsumerWidget {
                 icon: const Icon(Icons.close, color: Colors.white70),
                 onPressed: () {
                   ref.read(selectedSchoolIdProvider.notifier).state = null;
+                  ref.read(schoolSearchQueryProvider.notifier).state = '';
                 },
               ),
             ],
@@ -949,6 +969,7 @@ class _MobileSchoolDetailsCard extends ConsumerWidget {
                   icon: const Icon(Icons.close_rounded, color: Colors.white70),
                   onPressed: () {
                     ref.read(selectedSchoolIdProvider.notifier).state = null;
+                    ref.read(schoolSearchQueryProvider.notifier).state = '';
                   },
                 ),
               ],
@@ -1023,6 +1044,230 @@ class _MobileSchoolDetailsCard extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MobileSearchBar extends ConsumerStatefulWidget {
+  const _MobileSearchBar({
+    required this.onTapMenu,
+  });
+
+  final VoidCallback onTapMenu;
+
+  @override
+  ConsumerState<_MobileSearchBar> createState() => _MobileSearchBarState();
+}
+
+class _MobileSearchBarState extends ConsumerState<_MobileSearchBar> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+  bool _isFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final currentQuery = ref.read(schoolSearchQueryProvider);
+    _controller = TextEditingController(text: currentQuery);
+    _focusNode = FocusNode();
+    _focusNode.addListener(() {
+      setState(() {
+        _isFocused = _focusNode.hasFocus;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final searchQuery = ref.watch(schoolSearchQueryProvider);
+    final filteredSchools = ref.watch(filteredSchoolsProvider);
+    final schoolsAsync = ref.watch(schoolsProvider);
+
+    // Sync external changes (e.g. clear button pressed in drawer)
+    if (searchQuery != _controller.text) {
+      _controller.text = searchQuery;
+    }
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // The input card
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF0B1F1E),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF1A3330)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.menu_rounded, color: Colors.white),
+                      onPressed: widget.onTapMenu,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        decoration: const InputDecoration(
+                          hintText: 'Tìm kiếm trường học...',
+                          hintStyle: TextStyle(color: Colors.white38),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 12),
+                          filled: false,
+                        ),
+                        onChanged: (val) {
+                          ref.read(schoolSearchQueryProvider.notifier).state = val;
+                        },
+                      ),
+                    ),
+                    if (searchQuery.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.clear_rounded, color: Colors.white60, size: 20),
+                        onPressed: () {
+                          _controller.clear();
+                          ref.read(schoolSearchQueryProvider.notifier).state = '';
+                        },
+                      )
+                    else
+                      const Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: Icon(Icons.search_rounded, color: Color(0xFF2DD4BF), size: 22),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Floating suggestion list overlay under the search bar
+            if (_isFocused && searchQuery.trim().isNotEmpty) ...[
+              const SizedBox(height: 6),
+              schoolsAsync.when(
+                data: (_) {
+                  if (filteredSchools.isEmpty) {
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0B1F1E),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF1A3330)),
+                      ),
+                      child: const Text(
+                        'Không tìm thấy trường học nào.',
+                        style: TextStyle(color: Colors.white54, fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+                  return Container(
+                    constraints: const BoxConstraints(maxHeight: 280),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B1F1E),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF1A3330)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: ListView.separated(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: filteredSchools.length,
+                      separatorBuilder: (context, index) => Divider(
+                        height: 1,
+                        color: Colors.white.withValues(alpha: 0.06),
+                      ),
+                      itemBuilder: (context, index) {
+                        final school = filteredSchools[index];
+                        return ListTile(
+                          title: Text(
+                            school.tenTruong,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          subtitle: Text(
+                            school.diaChi,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 12,
+                            ),
+                          ),
+                          onTap: () {
+                            ref.read(selectedSchoolIdProvider.notifier).state = school.id;
+                            ref.read(schoolSearchQueryProvider.notifier).state = school.tenTruong;
+                            _focusNode.unfocus();
+                          },
+                        );
+                      },
+                    ),
+                  );
+                },
+                loading: () => Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0B1F1E),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF1A3330)),
+                  ),
+                  child: const Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF2DD4BF)),
+                    ),
+                  ),
+                ),
+                error: (err, _) => Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0B1F1E),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF1A3330)),
+                  ),
+                  child: Text(
+                    'Lỗi: $err',
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
