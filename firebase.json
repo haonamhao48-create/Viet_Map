@@ -1,0 +1,35 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": [
+    {
+      "bucket": "vietmap-9c90d.firebasestorage.app",
+      "rules": "storage.rules"
+    }
+  ],
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "vietmap-9c90d",
+          "appId": "1:166713477101:android:6fc41dd44d477265f709e4",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "vietmap-9c90d",
+          "configurations": {
+            "android": "1:166713477101:android:6fc41dd44d477265f709e4",
+            "ios": "1:166713477101:ios:e84ad55b7d87e14af709e4",
+            "macos": "1:166713477101:ios:e84ad55b7d87e14af709e4",
+            "web": "1:166713477101:web:b37e642f8739a967f709e4",
+            "windows": "1:166713477101:web:b7c6eb5a6d7e4b17f709e4"
+          }
+        }
+      }
+    }
+  }
+}

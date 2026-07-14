@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "school_visit_notes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "school_id", "order": "ASCENDING" },
+        { "fieldPath": "visit_date", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
