@@ -40,10 +40,14 @@ class HighSchoolModel {
     DocumentSnapshot<Map<String, dynamic>> snapshot,
   ) {
     final data = snapshot.data() ?? const <String, dynamic>{};
+    return HighSchoolModel.fromMap(data, snapshot.id);
+  }
+
+  factory HighSchoolModel.fromMap(Map<String, dynamic> data, String docId) {
     final coordinates = _parseCoordinates(data);
 
     return HighSchoolModel(
-      id: snapshot.id,
+      id: docId,
       tenTruong: data['ten_truong']?.toString() ?? '',
       latitude: coordinates.$1,
       longitude: coordinates.$2,
@@ -54,7 +58,11 @@ class HighSchoolModel {
       diaChi: data['dia_chi']?.toString() ?? '',
       khuVuc: data['khu_vuc']?.toString(),
       maTruong: data['ma_truong']?.toString(),
-      stt: (data['stt'] as num?)?.toInt(),
+      stt: data['stt'] != null
+          ? (data['stt'] is num
+              ? (data['stt'] as num).toInt()
+              : int.tryParse(data['stt'].toString()))
+          : null,
     );
   }
 
