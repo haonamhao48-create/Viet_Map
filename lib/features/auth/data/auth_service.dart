@@ -99,8 +99,8 @@ class AuthService {
       if (code == null) {
         request.response
           ..statusCode = 400
-          ..write('Lỗi: Không lấy được mã xác thực code.')
-          ..close();
+          ..write('Lỗi: Không lấy được mã xác thực code.');
+        await request.response.close();
         throw Exception('Không có mã xác thực code từ Google.');
       }
       
@@ -123,8 +123,8 @@ class AuthService {
               <script>setTimeout(window.close, 3000);</script>
             </body>
           </html>
-        ''')
-        ..close();
+        ''');
+      await request.response.close();
         
       // 5. Trao đổi code lấy tokens
       final clientSecret = FirebaseAuthConfig.clientSecret;
