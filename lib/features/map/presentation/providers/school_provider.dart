@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/high_school_firestore_datasource.dart';
 import '../../data/models/high_school_model.dart';
@@ -7,8 +9,17 @@ final highSchoolDataSourceProvider = Provider<HighSchoolFirestoreDataSource>((re
 });
 
 final schoolsProvider = FutureProvider<List<HighSchoolModel>>((ref) async {
-  final dataSource = ref.watch(highSchoolDataSourceProvider);
-  return await dataSource.getAll();
+  final jsonString = await rootBundle.loadString('assets/geojson/high_schools.json');
+  final List<dynamic> jsonList = json.decode(jsonString);
+  
+  final schools = jsonList.map((item) {
+    final map = item as Map<String, dynamic>;
+    final docId = map['id']?.toString() ?? '';
+    return HighSchoolModel.fromMap(map, docId);
+  }).toList()
+    ..sort((a, b) => a.tenTruong.compareTo(b.tenTruong));
+
+  return schools;
 });
 
 final selectedSchoolIdProvider = StateProvider<String?>((ref) => null);

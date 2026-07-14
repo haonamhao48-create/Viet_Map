@@ -102,7 +102,6 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
   double _currentZoom = _defaultZoom;
 
   final Map<String, List<List<LatLng>>> _provinceBoundaries = {};
-  bool _isLoadingBoundaries = true;
 
   static const List<String> _geojsonFiles = [
     '01_ha_noi.geojson', '04_cao_bang.geojson', '08_tuyen_quang.geojson', 
@@ -144,30 +143,22 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
 
   Future<void> _loadAllBoundaries() async {
     try {
-      final futures = _geojsonFiles.map((file) async {
-        final jsonStr = await DefaultAssetBundle.of(context).loadString('assets/geojson/$file');
-        final result = await compute(parseGeoJsonIsolate, GeoJsonParseTask(jsonStr: jsonStr));
-        return result.boundaries;
-      });
+      final jsonStrings = await Future.wait(
+        _geojsonFiles.map((file) => DefaultAssetBundle.of(context).loadString('assets/geojson/$file'))
+      );
 
-      final results = await Future.wait(futures);
-      
-      for (final result in results) {
-        result.forEach((key, value) {
-          if (!_provinceBoundaries.containsKey(key)) {
-            _provinceBoundaries[key] = [];
-          }
-          _provinceBoundaries[key]!.addAll(value);
+      final result = await compute(
+        parseMultiGeoJsonIsolate,
+        MultiGeoJsonParseTask(jsonStrings: jsonStrings),
+      );
+
+      if (mounted) {
+        setState(() {
+          _provinceBoundaries.addAll(result.boundaries);
         });
       }
     } catch (e) {
       debugPrint('Lỗi tải ranh giới địa phận: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingBoundaries = false;
-        });
-      }
     }
   }
 
@@ -186,13 +177,6 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingBoundaries) {
-      return const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0F766E)),
-        ),
-      );
-    }
 
     final schoolsAsync = ref.watch(schoolsProvider);
     final filteredSchools = ref.watch(filteredSchoolsProvider);
@@ -727,9 +711,9 @@ List<List<LatLng>> parseGeoJsonGeometry(Map<String, dynamic> geometry) {
   return result;
 }
 
-class GeoJsonParseTask {
-  final String jsonStr;
-  GeoJsonParseTask({required this.jsonStr});
+class MultiGeoJsonParseTask {
+  final List<String> jsonStrings;
+  MultiGeoJsonParseTask({required this.jsonStrings});
 }
 
 class GeoJsonParseResult {
@@ -737,23 +721,29 @@ class GeoJsonParseResult {
   GeoJsonParseResult({required this.boundaries});
 }
 
-GeoJsonParseResult parseGeoJsonIsolate(GeoJsonParseTask task) {
-  final data = json.decode(task.jsonStr) as Map<String, dynamic>;
-  final features = data['features'] as List<dynamic>;
+GeoJsonParseResult parseMultiGeoJsonIsolate(MultiGeoJsonParseTask task) {
   final parsed = <String, List<List<LatLng>>>{};
+  for (final jsonStr in task.jsonStrings) {
+    try {
+      final data = json.decode(jsonStr) as Map<String, dynamic>;
+      final features = data['features'] as List<dynamic>;
 
-  for (final feature in features) {
-    final props = feature['properties'] as Map<String, dynamic>;
-    final name = props['name'] as String;
-    final normalizedName = normalizeProvinceName(name);
-    
-    final geometry = feature['geometry'] as Map<String, dynamic>;
-    final polygonRings = parseGeoJsonGeometry(geometry);
-    
-    if (!parsed.containsKey(normalizedName)) {
-      parsed[normalizedName] = [];
+      for (final feature in features) {
+        final props = feature['properties'] as Map<String, dynamic>;
+        final name = props['name'] as String;
+        final normalizedName = normalizeProvinceName(name);
+        
+        final geometry = feature['geometry'] as Map<String, dynamic>;
+        final polygonRings = parseGeoJsonGeometry(geometry);
+        
+        if (!parsed.containsKey(normalizedName)) {
+          parsed[normalizedName] = [];
+        }
+        parsed[normalizedName]!.addAll(polygonRings);
+      }
+    } catch (e) {
+      continue;
     }
-    parsed[normalizedName]!.addAll(polygonRings);
   }
   return GeoJsonParseResult(boundaries: parsed);
 }
