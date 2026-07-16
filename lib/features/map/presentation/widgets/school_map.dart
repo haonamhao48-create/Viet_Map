@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:path_provider/path_provider.dart';
 import '../providers/school_provider.dart';
 import '../providers/route_provider.dart';
 import '../../data/models/high_school_model.dart';
@@ -97,6 +100,7 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
   late final MapController _mapController;
   static const LatLng _vietnamCenter = LatLng(15.8, 108.0);
   static const double _defaultZoom = 6.0;
+  final FirebaseStorage _firebaseStorage = FirebaseStorage.instance;
 
   LatLngBounds? _visibleBounds;
   double _currentZoom = _defaultZoom;
@@ -143,31 +147,125 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
   }
 
   Future<void> _loadAllBoundaries() async {
-    try {
-      final futures = _geojsonFiles.map((file) async {
-        final jsonStr = await DefaultAssetBundle.of(context).loadString('assets/geojson/$file');
-        final result = await compute(parseGeoJsonIsolate, GeoJsonParseTask(jsonStr: jsonStr));
-        return result.boundaries;
+    if (mounted) {
+      setState(() {
+        _isLoadingBoundaries = true;
       });
+    }
 
-      final results = await Future.wait(futures);
-      
-      for (final result in results) {
-        result.forEach((key, value) {
-          if (!_provinceBoundaries.containsKey(key)) {
-            _provinceBoundaries[key] = [];
-          }
-          _provinceBoundaries[key]!.addAll(value);
-        });
+    _provinceBoundaries.clear();
+
+    try {
+      /*
+     * Không tải đồng thời toàn bộ 34 file.
+     * Mỗi đợt chỉ tải tối đa 4 file để tránh nghẽn mạng,
+     * CPU và bộ nhớ.
+     */
+      const batchSize = 4;
+
+      for (int start = 0; start < _geojsonFiles.length; start += batchSize) {
+        final end = (start + batchSize < _geojsonFiles.length)
+            ? start + batchSize
+            : _geojsonFiles.length;
+
+        final currentBatch = _geojsonFiles.sublist(start, end);
+
+        final batchResults = await Future.wait(
+          currentBatch.map((fileName) async {
+            try {
+              final jsonString = await _loadGeoJsonFromFirebase(fileName);
+
+              final parsedResult = await compute(
+                parseGeoJsonIsolate,
+                GeoJsonParseTask(jsonStr: jsonString),
+              );
+
+              return parsedResult.boundaries;
+            } catch (error, stackTrace) {
+              debugPrint(
+                '[GEOJSON] Lỗi file $fileName: $error\n$stackTrace',
+              );
+
+              return <String, List<List<LatLng>>>{};
+            }
+          }),
+        );
+
+        for (final result in batchResults) {
+          result.forEach((provinceName, polygonRings) {
+            _provinceBoundaries
+                .putIfAbsent(provinceName, () => <List<LatLng>>[])
+                .addAll(polygonRings);
+          });
+        }
+
+        debugPrint(
+          '[GEOJSON] Đã xử lý $end/${_geojsonFiles.length} file',
+        );
       }
-    } catch (e) {
-      debugPrint('Lỗi tải ranh giới địa phận: $e');
+
+      debugPrint(
+        '[GEOJSON] Hoàn tất, số tỉnh: ${_provinceBoundaries.length}',
+      );
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Lỗi tải ranh giới địa phận: $error\n$stackTrace',
+      );
     } finally {
       if (mounted) {
         setState(() {
           _isLoadingBoundaries = false;
         });
       }
+    }
+  }
+
+  Future<String> _loadGeoJsonFromFirebase(String fileName) async {
+    final appDirectory = await getApplicationSupportDirectory();
+
+    final cacheDirectory = Directory(
+      '${appDirectory.path}${Platform.pathSeparator}geojson'
+          '${Platform.pathSeparator}provinces',
+    );
+
+    if (!await cacheDirectory.exists()) {
+      await cacheDirectory.create(recursive: true);
+    }
+
+    final localFile = File(
+      '${cacheDirectory.path}${Platform.pathSeparator}$fileName',
+    );
+
+    // Đã tải trước đó thì đọc từ máy, không tải Firebase lần nữa.
+    if (await localFile.exists() && await localFile.length() > 0) {
+      debugPrint('[GEOJSON] Đọc cache: $fileName');
+      return localFile.readAsString();
+    }
+
+    debugPrint('[GEOJSON] Đang tải Firebase: $fileName');
+
+    final storageReference = _firebaseStorage.ref(
+      'geojson/provinces/$fileName',
+    );
+
+    try {
+      await storageReference.writeToFile(localFile);
+
+      debugPrint(
+        '[GEOJSON] Tải thành công: $fileName, '
+            '${await localFile.length()} bytes',
+      );
+
+      return localFile.readAsString();
+    } catch (error) {
+      // Không giữ lại file hỏng hoặc file tải chưa hoàn tất.
+      if (await localFile.exists()) {
+        await localFile.delete();
+      }
+
+      throw Exception(
+        'Không tải được geojson/provinces/$fileName: $error',
+      );
     }
   }
 
