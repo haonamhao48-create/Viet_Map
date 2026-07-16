@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../providers/auth_provider.dart';
 
-/// Đăng xuất an toàn: đóng drawer/dialog, về `/`, rồi mới signOut Firebase.
-Future<void> performSignOut(WidgetRef ref, BuildContext context) async {
-  ref.read(authLoadingProvider.notifier).state = false;
+Future<void> performSignOut(
+    WidgetRef ref,
+    BuildContext context,
+    ) async {
+  // Lấy service trước vì widget có thể bị dispose sau khi đóng Drawer.
+  final authService = ref.read(authServiceProvider);
 
   final scaffoldState = Scaffold.maybeOf(context);
-  if (scaffoldState?.isDrawerOpen ?? false) {
-    Navigator.of(context).pop();
+
+  if (scaffoldState?.isDrawerOpen == true) {
+    // Không dùng Navigator.pop(context) để đóng Drawer.
+    scaffoldState!.closeDrawer();
+
+    // Đợi animation đóng Drawer hoàn tất.
+    await Future<void>.delayed(
+      const Duration(milliseconds: 350),
+    );
   }
 
-  if (context.mounted) {
-    context.go('/');
-  }
-
-  await Future<void>.delayed(Duration.zero);
-
-  await ref.read(authServiceProvider).signOut();
+  // Không dùng context, ref hoặc điều hướng sau dòng này.
+  await authService.signOut();
 }

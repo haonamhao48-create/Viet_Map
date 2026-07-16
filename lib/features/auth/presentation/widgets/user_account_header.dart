@@ -38,7 +38,20 @@ class UserAccountHeader extends ConsumerWidget {
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-                onTap: () => context.push('/profile'),
+                onTap: () async {
+                  final router = GoRouter.of(context);
+                  final scaffoldState = Scaffold.maybeOf(context);
+
+                  if (scaffoldState?.isDrawerOpen == true) {
+                    scaffoldState!.closeDrawer();
+
+                    await Future<void>.delayed(
+                      const Duration(milliseconds: 350),
+                    );
+                  }
+
+                  router.push('/profile');
+                },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(

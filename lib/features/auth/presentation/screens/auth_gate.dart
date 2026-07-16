@@ -15,17 +15,25 @@ class AuthGate extends ConsumerWidget {
     return authState.when(
       data: (user) {
         if (user == null) {
-          return const LoginScreen(key: ValueKey('login'));
+          return const LoginScreen();
         }
 
-        return const MapScreen(key: ValueKey('map'));
+        return const MapScreen();
       },
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (error, stackTrace) => Scaffold(
-        body: Center(child: Text(error.toString())),
-      ),
+      loading: () {
+        return const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      },
+      error: (error, stackTrace) {
+        return Scaffold(
+          body: Center(
+            child: Text('Lỗi xác thực: $error'),
+          ),
+        );
+      },
     );
   }
 }

@@ -100,6 +100,7 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
   late final MapController _mapController;
   static const LatLng _vietnamCenter = LatLng(15.8, 108.0);
   static const double _defaultZoom = 6.0;
+  bool _isLoadingBoundaries = false;
   final FirebaseStorage _firebaseStorage = FirebaseStorage.instance;
 
   LatLngBounds? _visibleBounds;
@@ -155,74 +156,70 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
     _provinceBoundaries.clear();
 
     try {
-      final jsonStrings = await Future.wait(
-        _geojsonFiles.map((file) => DefaultAssetBundle.of(context).loadString('assets/geojson/$file'))
-      );
-      /*
-     * Không tải đồng thời toàn bộ 34 file.
-     * Mỗi đợt chỉ tải tối đa 4 file để tránh nghẽn mạng,
-     * CPU và bộ nhớ.
-     */
       const batchSize = 4;
 
-      for (int start = 0; start < _geojsonFiles.length; start += batchSize) {
+      for (
+      int start = 0;
+      start < _geojsonFiles.length;
+      start += batchSize
+      ) {
         final end = (start + batchSize < _geojsonFiles.length)
             ? start + batchSize
             : _geojsonFiles.length;
 
         final currentBatch = _geojsonFiles.sublist(start, end);
 
-        final batchResults = await Future.wait(
+        final jsonStrings = await Future.wait(
           currentBatch.map((fileName) async {
             try {
-              final jsonString = await _loadGeoJsonFromFirebase(fileName);
-
-      final result = await compute(
-        parseMultiGeoJsonIsolate,
-        MultiGeoJsonParseTask(jsonStrings: jsonStrings),
-      );
-
-      if (mounted) {
-        setState(() {
-          _provinceBoundaries.addAll(result.boundaries);
-        });
-              final parsedResult = await compute(
-                parseGeoJsonIsolate,
-                GeoJsonParseTask(jsonStr: jsonString),
-              );
-
-              return parsedResult.boundaries;
+              return await _loadGeoJsonFromFirebase(fileName);
             } catch (error, stackTrace) {
               debugPrint(
-                '[GEOJSON] Lỗi file $fileName: $error\n$stackTrace',
+                '[GEOJSON] Lỗi tải file $fileName: '
+                    '$error\n$stackTrace',
               );
 
-              return <String, List<List<LatLng>>>{};
+              // Trả JSON rỗng để không làm hỏng cả batch.
+              return '{"type":"FeatureCollection","features":[]}';
             }
           }),
         );
 
-        for (final result in batchResults) {
-          result.forEach((provinceName, polygonRings) {
+        final parsedResult = await compute(
+          parseMultiGeoJsonIsolate,
+          MultiGeoJsonParseTask(jsonStrings: jsonStrings),
+        );
+
+        parsedResult.boundaries.forEach(
+              (provinceName, polygonRings) {
             _provinceBoundaries
-                .putIfAbsent(provinceName, () => <List<LatLng>>[])
+                .putIfAbsent(
+              provinceName,
+                  () => <List<LatLng>>[],
+            )
                 .addAll(polygonRings);
-          });
-        }
+          },
+        );
 
         debugPrint(
-          '[GEOJSON] Đã xử lý $end/${_geojsonFiles.length} file',
+          '[GEOJSON] Đã xử lý '
+              '$end/${_geojsonFiles.length} file',
         );
+
+        // Hiển thị dần các tỉnh đã tải xong.
+        if (mounted) {
+          setState(() {});
+        }
       }
-    } catch (e) {
-      debugPrint('Lỗi tải ranh giới địa phận: $e');
 
       debugPrint(
-        '[GEOJSON] Hoàn tất, số tỉnh: ${_provinceBoundaries.length}',
+        '[GEOJSON] Hoàn tất, số tỉnh: '
+            '${_provinceBoundaries.length}',
       );
     } catch (error, stackTrace) {
       debugPrint(
-        'Lỗi tải ranh giới địa phận: $error\n$stackTrace',
+        '[GEOJSON] Lỗi tải ranh giới địa phận: '
+            '$error\n$stackTrace',
       );
     } finally {
       if (mounted) {
