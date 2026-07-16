@@ -1,4 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+
+import 'go_router_refresh.dart';
 
 import '../features/auth/presentation/screens/auth_gate.dart';
 import '../features/auth/presentation/screens/profile_edit_screen.dart';
@@ -8,8 +11,30 @@ import '../features/campaigns/presentation/screens/event_detail_screen.dart';
 import '../features/campaigns/presentation/screens/my_events_screen.dart';
 import '../features/campaigns/presentation/widgets/campaign_auth_gate.dart';
 
+bool _isProtectedRoute(String location) {
+  return location.startsWith('/profile') ||
+      location.startsWith('/campaigns') ||
+      location.startsWith('/events') ||
+      location.startsWith('/my-events');
+}
+
+final _authRefreshNotifier = GoRouterAuthRefreshNotifier(
+  FirebaseAuth.instance.authStateChanges(),
+);
+
 final appRouter = GoRouter(
   initialLocation: '/',
+  refreshListenable: _authRefreshNotifier,
+  redirect: (context, state) {
+    final isLoggedIn = FirebaseAuth.instance.currentUser != null;
+    final location = state.matchedLocation;
+
+    if (!isLoggedIn && _isProtectedRoute(location)) {
+      return '/';
+    }
+
+    return null;
+  },
   routes: [
     GoRoute(
       path: '/',

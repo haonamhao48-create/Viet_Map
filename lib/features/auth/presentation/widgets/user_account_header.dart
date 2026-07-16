@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/auth_provider.dart';
+import '../utils/auth_logout.dart';
 
 class UserAccountHeader extends ConsumerWidget {
   const UserAccountHeader({super.key});
@@ -101,8 +102,7 @@ class UserAccountHeader extends ConsumerWidget {
           IconButton(
             tooltip: 'Đăng xuất',
             onPressed: () async {
-              ref.read(authLoadingProvider.notifier).state = false;
-              await ref.read(authServiceProvider).signOut();
+              await performSignOut(ref, context);
             },
             icon: const Icon(Icons.logout_rounded, color: Colors.white54),
           ),

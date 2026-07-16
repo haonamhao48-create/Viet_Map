@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../auth/presentation/utils/auth_logout.dart';
 import '../providers/school_provider.dart';
 import '../providers/route_provider.dart';
 import '../widgets/school_map.dart';
@@ -40,6 +41,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final isDesktop = width >= 800;
 
     ref.listen<String>(schoolSearchQueryProvider, (prev, next) {
+      if (!mounted) return;
       if (_searchController.text != next) {
         _searchController.text = next;
       }
@@ -128,8 +130,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 ],
                               ),
                             );
-                            if (confirm == true) {
-                              await ref.read(authServiceProvider).signOut();
+                            if (confirm == true && context.mounted) {
+                              await performSignOut(ref, context);
                             }
                           },
                         ),
