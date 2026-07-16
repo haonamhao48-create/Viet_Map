@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/models/app_user_model.dart';
 import '../providers/auth_provider.dart';
+import '../utils/auth_navigation.dart';
+import '../utils/role_navigation.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -42,6 +45,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(authLoadingProvider.notifier).state = false;
+
+      if (AuthNavigation.isSigningOut) return;
+      final authUser = ref.read(authStateProvider).valueOrNull;
+      final profile = ref.read(currentUserProfileProvider).valueOrNull;
+      if (authUser != null && profile != null) {
+        navigateAfterLogin(context, ref);
+      }
     });
   }
 
@@ -61,6 +71,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final isLoading = ref.watch(authLoadingProvider);
     final size = MediaQuery.of(context).size;
     final isMobile = size.width < 850;
+
+    ref.listen<AsyncValue<AppUserModel?>>(currentUserProfileProvider, (
+      previous,
+      next,
+    ) {
+      if (!mounted || AuthNavigation.isSigningOut) return;
+
+      final profile = next.valueOrNull;
+      if (profile == null) return;
+
+      final wasLoggedOut = previous?.valueOrNull == null;
+      if (!wasLoggedOut) return;
+
+      navigateAfterLogin(context, ref);
+    });
 
     return Scaffold(
       backgroundColor: _inkDark,

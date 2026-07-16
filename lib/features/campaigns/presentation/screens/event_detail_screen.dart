@@ -1,0 +1,295 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../shared/widgets/loading_indicator.dart';
+import '../../../map/presentation/providers/school_provider.dart';
+import '../../data/models/event_participation_model.dart';
+import '../providers/campaign_provider.dart';
+import '../utils/date_formatters.dart';
+import '../widgets/status_chip.dart';
+
+class EventDetailScreen extends ConsumerWidget {
+  const EventDetailScreen({super.key, required this.eventId});
+
+  final String eventId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final eventAsync = ref.watch(eventDetailProvider(eventId));
+    final participationAsync = ref.watch(eventParticipationProvider(eventId));
+    final registrationState = ref.watch(eventRegistrationControllerProvider);
+
+    ref.listen(eventRegistrationControllerProvider, (previous, next) {
+      next.whenOrNull(
+        error: (error, _) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(participationErrorMessage(error))),
+          );
+        },
+      );
+    });
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Chi tiết sự kiện'),
+        backgroundColor: const Color(0xFF0F766E),
+        foregroundColor: Colors.white,
+      ),
+      body: eventAsync.when(
+        loading: () => const AppLoadingIndicator(message: 'Đang tải sự kiện...'),
+        error: (error, _) => Center(child: Text('Lỗi: $error')),
+        data: (event) {
+          if (event == null) {
+            return const Center(child: Text('Không tìm thấy sự kiện.'));
+          }
+
+          final participation = participationAsync.valueOrNull;
+          final isLoadingAction = registrationState.isLoading;
+
+          return Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    if (event.imageUrl.isNotEmpty)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Image.network(
+                            event.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: const Color(0xFF0F766E).withValues(alpha: 0.08),
+                              child: const Icon(Icons.event_outlined, size: 48),
+                            ),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            event.title,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        EventStatusChip(status: event.status),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(formatEventDateRange(event.startDate, event.endDate)),
+                    const SizedBox(height: 12),
+                    Text(event.description),
+                    const SizedBox(height: 20),
+                    _InfoTile(
+                      icon: Icons.school_outlined,
+                      title: 'Trường',
+                      value: event.schoolName.isNotEmpty
+                          ? event.schoolName
+                          : 'Chưa cập nhật',
+                    ),
+                    if (event.address.isNotEmpty)
+                      _InfoTile(
+                        icon: Icons.location_on_outlined,
+                        title: 'Địa chỉ',
+                        value: event.address,
+                      ),
+                    _InfoTile(
+                      icon: Icons.people_outline,
+                      title: 'Số lượng đăng ký',
+                      value: event.capacity > 0
+                          ? '${event.registeredCount}/${event.capacity}'
+                          : '${event.registeredCount}',
+                    ),
+                    if (participation != null) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Text('Trạng thái của bạn: '),
+                          ParticipationStatusChip(status: participation.status),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              SafeArea(
+                minimum: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (event.schoolId.isNotEmpty)
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          ref.read(selectedSchoolIdProvider.notifier).state =
+                              event.schoolId;
+                          context.go('/home');
+                        },
+                        icon: const Icon(Icons.map_outlined),
+                        label: const Text('Xem trên bản đồ'),
+                      ),
+                    if (event.schoolId.isNotEmpty) const SizedBox(height: 8),
+                    _buildActionButton(
+                      context: context,
+                      ref: ref,
+                      participation: participation,
+                      isFull: event.isFull,
+                      isLoading: isLoadingAction,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required BuildContext context,
+    required WidgetRef ref,
+    required EventParticipationModel? participation,
+    required bool isFull,
+    required bool isLoading,
+  }) {
+    final status = participation?.status;
+
+    if (status == ParticipationStatus.registered) {
+      return FilledButton.icon(
+        onPressed: isLoading
+            ? null
+            : () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Hủy đăng ký'),
+                    content: const Text(
+                      'Bạn có chắc muốn hủy đăng ký sự kiện này?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Không'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Hủy đăng ký'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true && context.mounted) {
+                  await ref
+                      .read(eventRegistrationControllerProvider.notifier)
+                      .cancel(eventId);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Đã hủy đăng ký.')),
+                    );
+                  }
+                }
+              },
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFFDC2626),
+        ),
+        icon: isLoading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.cancel_outlined),
+        label: const Text('Hủy đăng ký'),
+      );
+    }
+
+    if (status == ParticipationStatus.attended ||
+        status == ParticipationStatus.absent ||
+        status == ParticipationStatus.cancelled) {
+      return FilledButton(
+        onPressed: null,
+        child: Text(
+          status == ParticipationStatus.cancelled
+              ? 'Đã hủy đăng ký'
+              : status!.label,
+        ),
+      );
+    }
+
+    return FilledButton.icon(
+      onPressed: isLoading || isFull
+          ? null
+          : () async {
+              await ref
+                  .read(eventRegistrationControllerProvider.notifier)
+                  .register(eventId);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Đăng ký thành công!')),
+                );
+              }
+            },
+      icon: isLoading
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            )
+          : const Icon(Icons.how_to_reg_outlined),
+      label: Text(isFull ? 'Đã đủ chỗ' : 'Đăng ký tham gia'),
+    );
+  }
+}
+
+class _InfoTile extends StatelessWidget {
+  const _InfoTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

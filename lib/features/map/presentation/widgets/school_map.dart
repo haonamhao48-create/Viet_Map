@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:path_provider/path_provider.dart';
 import '../providers/school_provider.dart';
 import '../providers/route_provider.dart';
 import '../../data/models/high_school_model.dart';
@@ -97,6 +100,8 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
   late final MapController _mapController;
   static const LatLng _vietnamCenter = LatLng(15.8, 108.0);
   static const double _defaultZoom = 6.0;
+  bool _isLoadingBoundaries = false;
+  final FirebaseStorage _firebaseStorage = FirebaseStorage.instance;
 
   LatLngBounds? _visibleBounds;
   double _currentZoom = _defaultZoom;
@@ -142,23 +147,135 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
   }
 
   Future<void> _loadAllBoundaries() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingBoundaries = true;
+      });
+    }
+
+    _provinceBoundaries.clear();
+
     try {
-      final jsonStrings = await Future.wait(
-        _geojsonFiles.map((file) => DefaultAssetBundle.of(context).loadString('assets/geojson/$file'))
-      );
+      const batchSize = 4;
 
-      final result = await compute(
-        parseMultiGeoJsonIsolate,
-        MultiGeoJsonParseTask(jsonStrings: jsonStrings),
-      );
+      for (
+      int start = 0;
+      start < _geojsonFiles.length;
+      start += batchSize
+      ) {
+        final end = (start + batchSize < _geojsonFiles.length)
+            ? start + batchSize
+            : _geojsonFiles.length;
 
+        final currentBatch = _geojsonFiles.sublist(start, end);
+
+        final jsonStrings = await Future.wait(
+          currentBatch.map((fileName) async {
+            try {
+              return await _loadGeoJsonFromFirebase(fileName);
+            } catch (error, stackTrace) {
+              debugPrint(
+                '[GEOJSON] Lỗi tải file $fileName: '
+                    '$error\n$stackTrace',
+              );
+
+              // Trả JSON rỗng để không làm hỏng cả batch.
+              return '{"type":"FeatureCollection","features":[]}';
+            }
+          }),
+        );
+
+        final parsedResult = await compute(
+          parseMultiGeoJsonIsolate,
+          MultiGeoJsonParseTask(jsonStrings: jsonStrings),
+        );
+
+        parsedResult.boundaries.forEach(
+              (provinceName, polygonRings) {
+            _provinceBoundaries
+                .putIfAbsent(
+              provinceName,
+                  () => <List<LatLng>>[],
+            )
+                .addAll(polygonRings);
+          },
+        );
+
+        debugPrint(
+          '[GEOJSON] Đã xử lý '
+              '$end/${_geojsonFiles.length} file',
+        );
+
+        // Hiển thị dần các tỉnh đã tải xong.
+        if (mounted) {
+          setState(() {});
+        }
+      }
+
+      debugPrint(
+        '[GEOJSON] Hoàn tất, số tỉnh: '
+            '${_provinceBoundaries.length}',
+      );
+    } catch (error, stackTrace) {
+      debugPrint(
+        '[GEOJSON] Lỗi tải ranh giới địa phận: '
+            '$error\n$stackTrace',
+      );
+    } finally {
       if (mounted) {
         setState(() {
-          _provinceBoundaries.addAll(result.boundaries);
+          _isLoadingBoundaries = false;
         });
       }
-    } catch (e) {
-      debugPrint('Lỗi tải ranh giới địa phận: $e');
+    }
+  }
+
+  Future<String> _loadGeoJsonFromFirebase(String fileName) async {
+    final appDirectory = await getApplicationSupportDirectory();
+
+    final cacheDirectory = Directory(
+      '${appDirectory.path}${Platform.pathSeparator}geojson'
+          '${Platform.pathSeparator}provinces',
+    );
+
+    if (!await cacheDirectory.exists()) {
+      await cacheDirectory.create(recursive: true);
+    }
+
+    final localFile = File(
+      '${cacheDirectory.path}${Platform.pathSeparator}$fileName',
+    );
+
+    // Đã tải trước đó thì đọc từ máy, không tải Firebase lần nữa.
+    if (await localFile.exists() && await localFile.length() > 0) {
+      debugPrint('[GEOJSON] Đọc cache: $fileName');
+      return localFile.readAsString();
+    }
+
+    debugPrint('[GEOJSON] Đang tải Firebase: $fileName');
+
+    final storageReference = _firebaseStorage.ref(
+      'geojson/provinces/$fileName',
+    );
+
+    try {
+      await storageReference.writeToFile(localFile);
+
+      debugPrint(
+        '[GEOJSON] Tải thành công: $fileName, '
+            '${await localFile.length()} bytes',
+      );
+
+      return localFile.readAsString();
+    } catch (error) {
+      // Không giữ lại file hỏng hoặc file tải chưa hoàn tất.
+      if (await localFile.exists()) {
+        await localFile.delete();
+      }
+
+      throw Exception(
+        'Không tải được geojson/provinces/$fileName: $error',
+      );
     }
   }
 
@@ -192,15 +309,15 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
 
     // Listen for selection changes to center the camera on the school
     ref.listen<HighSchoolModel?>(selectedSchoolProvider, (previous, next) {
+      if (!mounted) return;
       if (next != null && next.hasValidCoordinates) {
-        // Zoom to at least 12 so the school marker is always visible
         final targetZoom = _currentZoom < 12.0 ? 12.0 : _currentZoom;
         _mapController.move(LatLng(next.latitude, next.longitude), targetZoom);
       }
     });
 
-    // Listen for route points changes to auto-zoom and center the route
     ref.listen<AsyncValue<List<LatLng>>>(routePointsProvider, (previous, next) {
+      if (!mounted) return;
       final points = next.valueOrNull ?? [];
       if (points.isNotEmpty) {
         final start = ref.read(startSchoolProvider);
@@ -226,6 +343,7 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
 
     // Listen for search results changes to automatically zoom and center them
     ref.listen<List<HighSchoolModel>>(filteredSchoolsProvider, (previous, next) {
+      if (!mounted) return;
       final query = ref.read(schoolSearchQueryProvider).trim();
       if (query.isNotEmpty && next.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -601,12 +719,34 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
         ),
       ),
       error: (error, stack) => Center(
-        child: Text(
-          'Lỗi tải bản đồ trường học: $error',
-          style: const TextStyle(color: Colors.red),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline, color: Colors.red, size: 40),
+              const SizedBox(height: 12),
+              Text(
+                _mapLoadErrorMessage(error),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  String _mapLoadErrorMessage(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('permission-denied') ||
+        message.contains('unauthorized')) {
+      return 'Không có quyền truy cập dữ liệu bản đồ.\n'
+          'Hãy deploy firestore.rules lên Firebase Console '
+          '(collection high_schools cần allow read cho user đã đăng nhập).';
+    }
+    return 'Lỗi tải bản đồ trường học: $error';
   }
 }
 
@@ -732,10 +872,10 @@ GeoJsonParseResult parseMultiGeoJsonIsolate(MultiGeoJsonParseTask task) {
         final props = feature['properties'] as Map<String, dynamic>;
         final name = props['name'] as String;
         final normalizedName = normalizeProvinceName(name);
-        
+
         final geometry = feature['geometry'] as Map<String, dynamic>;
         final polygonRings = parseGeoJsonGeometry(geometry);
-        
+
         if (!parsed.containsKey(normalizedName)) {
           parsed[normalizedName] = [];
         }

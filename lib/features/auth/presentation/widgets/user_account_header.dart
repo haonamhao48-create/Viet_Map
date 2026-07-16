@@ -1,15 +1,88 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/auth_provider.dart';
+import '../utils/auth_logout.dart';
+
+/// Avatar + tên + đăng xuất trên AppBar (desktop).
+class MapAppBarUserActions extends ConsumerWidget {
+  const MapAppBarUserActions({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authUser = FirebaseAuth.instance.currentUser;
+    if (authUser == null) {
+      return const SizedBox.shrink();
+    }
+
+    final profile = ref.watch(currentUserProfileProvider).valueOrNull;
+    final theme = Theme.of(context);
+    final displayName =
+        profile?.fullName ?? authUser.displayName ?? authUser.email ?? '';
+    final avatarUrl = profile?.avatarUrl ?? authUser.photoURL;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: () => context.push('/profile'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: CircleAvatar(
+                      radius: 17,
+                      backgroundImage: avatarUrl != null
+                          ? NetworkImage(avatarUrl)
+                          : null,
+                      child: avatarUrl == null
+                          ? const Icon(Icons.person, size: 18, color: Colors.white)
+                          : null,
+                    ),
+                  ),
+                  if (displayName.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      displayName,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.logout_rounded),
+          color: Colors.white,
+          tooltip: 'Đăng xuất',
+          onPressed: () => performSignOut(ref, context),
+        ),
+      ],
+    );
+  }
+}
 
 class UserAccountHeader extends ConsumerWidget {
   const UserAccountHeader({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authUser = ref.watch(authStateProvider).valueOrNull;
+    final authUser = FirebaseAuth.instance.currentUser;
     final profile = ref.watch(currentUserProfileProvider).valueOrNull;
     final theme = Theme.of(context);
 
@@ -37,7 +110,20 @@ class UserAccountHeader extends ConsumerWidget {
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-                onTap: () => context.push('/profile'),
+                onTap: () async {
+                  final router = GoRouter.of(context);
+                  final scaffoldState = Scaffold.maybeOf(context);
+
+                  if (scaffoldState?.isDrawerOpen == true) {
+                    scaffoldState!.closeDrawer();
+
+                    await Future<void>.delayed(
+                      const Duration(milliseconds: 350),
+                    );
+                  }
+
+                  router.push('/profile');
+                },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
@@ -101,8 +187,7 @@ class UserAccountHeader extends ConsumerWidget {
           IconButton(
             tooltip: 'Đăng xuất',
             onPressed: () async {
-              ref.read(authLoadingProvider.notifier).state = false;
-              await ref.read(authServiceProvider).signOut();
+              await performSignOut(ref, context);
             },
             icon: const Icon(Icons.logout_rounded, color: Colors.white54),
           ),

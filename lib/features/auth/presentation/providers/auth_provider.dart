@@ -19,11 +19,12 @@ final authStateProvider = StreamProvider<User?>((ref) {
 
 final currentUserProfileProvider = StreamProvider<AppUserModel?>((ref) {
   final user = ref.watch(authStateProvider).valueOrNull;
+
   if (user == null) {
     return Stream.value(null);
   }
 
-  return ref.read(authServiceProvider).watchCurrentUserProfile();
+  return ref.watch(authServiceProvider).watchCurrentUserProfile();
 });
 
 final authLoadingProvider = StateProvider<bool>((ref) => false);
