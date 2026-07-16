@@ -30,5 +30,43 @@ service cloud.firestore {
         && resource.data.author_uid == request.auth.uid;
       allow update: if false;
     }
+
+    match /campaigns/{campaignId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    match /events/{eventId} {
+      allow read: if request.auth != null;
+      allow create, delete: if false;
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['registered_count', 'updated_at'])
+        && request.resource.data.registered_count is int
+        && request.resource.data.registered_count >= 0;
+    }
+
+    match /event_participations/{participationId} {
+      allow read: if request.auth != null
+        && resource.data.user_id == request.auth.uid;
+
+      allow create: if request.auth != null
+        && request.resource.data.user_id == request.auth.uid
+        && request.resource.data.event_id is string
+        && participationId == request.resource.data.event_id + '_' + request.auth.uid
+        && request.resource.data.status == 'registered';
+
+      allow update: if request.auth != null
+        && resource.data.user_id == request.auth.uid
+        && request.resource.data.user_id == request.auth.uid
+        && (
+          (resource.data.status == 'registered'
+            && request.resource.data.status == 'cancelled')
+          || (resource.data.status == 'cancelled'
+            && request.resource.data.status == 'registered')
+        );
+
+      allow delete: if false;
+    }
   }
 }

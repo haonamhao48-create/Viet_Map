@@ -39,4 +39,15 @@ class HighSchoolFirestoreDataSource {
 
     return schools;
   }
+
+  Stream<List<HighSchoolModel>> streamAll() {
+    return _firestore.collection('high_schools').snapshots().map((snapshot) {
+      return snapshot.docs
+          .map(HighSchoolModel.fromFirestore)
+          .where((school) => school.tenTruong.isNotEmpty)
+          .toList()
+        ..sort((a, b) => a.tenTruong.compareTo(b.tenTruong));
+    });
+  }
 }
+
