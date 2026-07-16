@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/school_provider.dart';
@@ -65,6 +66,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     backgroundColor: const Color(0xFF0F766E),
                     iconTheme: const IconThemeData(color: Colors.white),
                     actions: [
+                      if (userProfile != null || authState.valueOrNull != null)
+                        IconButton(
+                          icon: const Icon(Icons.campaign_outlined),
+                          color: Colors.white,
+                          tooltip: 'Chiến dịch tuyển sinh',
+                          onPressed: () => context.push('/campaigns'),
+                        ),
                       if (userProfile != null || authState.valueOrNull != null) ...[
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -283,6 +291,10 @@ class _SidebarContent extends ConsumerWidget {
             ),
           ),
           const Divider(height: 1, color: Color(0xFF1A3330)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            child: _CampaignNavSection(),
+          ),
           const Padding(
             padding: EdgeInsets.all(12.0),
             child: UserAccountHeader(),
@@ -1269,6 +1281,47 @@ class _MobileSearchBarState extends ConsumerState<_MobileSearchBar> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CampaignNavSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authUser = ref.watch(authStateProvider).valueOrNull;
+    if (authUser == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.campaign_outlined, color: Color(0xFF2DD4BF)),
+          title: const Text(
+            'Chiến dịch tuyển sinh',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          subtitle: const Text(
+            'Xem chiến dịch và đăng ký sự kiện',
+            style: TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+          onTap: () {
+            Navigator.of(context).pop();
+            context.push('/campaigns');
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.event_note_outlined, color: Color(0xFF2DD4BF)),
+          title: const Text(
+            'Sự kiện của tôi',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          onTap: () {
+            Navigator.of(context).pop();
+            context.push('/my-events');
+          },
+        ),
+      ],
     );
   }
 }
