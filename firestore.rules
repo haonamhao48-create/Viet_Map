@@ -20,6 +20,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /map_regions/{regionId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
     match /school_visit_notes/{noteId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
@@ -47,18 +52,28 @@ service cloud.firestore {
     }
 
     match /event_participations/{participationId} {
+      function participationUserId(data) {
+        return data.get('user_id', data.get('userId', ''));
+      }
+
+      function participationEventId(data) {
+        return data.get('event_id', data.get('eventId', ''));
+      }
+
       allow read: if request.auth != null
-        && resource.data.user_id == request.auth.uid;
+        && participationUserId(resource.data) == request.auth.uid;
 
       allow create: if request.auth != null
-        && request.resource.data.user_id == request.auth.uid
-        && request.resource.data.event_id is string
-        && participationId == request.resource.data.event_id + '_' + request.auth.uid
+        && participationUserId(request.resource.data) == request.auth.uid
+        && participationEventId(request.resource.data) is string
+        && (
+          participationId == participationEventId(request.resource.data) + '_' + request.auth.uid
+        )
         && request.resource.data.status == 'registered';
 
       allow update: if request.auth != null
-        && resource.data.user_id == request.auth.uid
-        && request.resource.data.user_id == request.auth.uid
+        && participationUserId(resource.data) == request.auth.uid
+        && participationUserId(request.resource.data) == request.auth.uid
         && (
           (resource.data.status == 'registered'
             && request.resource.data.status == 'cancelled')

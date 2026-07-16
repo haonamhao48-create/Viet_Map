@@ -141,31 +141,35 @@ final eventParticipationProvider =
 
 final myEventsWithDetailsProvider =
     StreamProvider<List<EventParticipationModel>>((ref) {
-  final userId = ref.watch(authStateProvider).valueOrNull?.uid;
-  if (userId == null) {
+  final authState = ref.watch(authStateProvider);
+  final user = authState.valueOrNull;
+
+  if (user == null) {
     return Stream.value(const []);
   }
 
   final participationRepo = ref.watch(participationRepositoryProvider);
   final eventRepo = ref.watch(eventRepositoryProvider);
 
-  return participationRepo.watchUserParticipations(userId).asyncMap(
-    (participations) async {
-      final cache = <String, EventModel>{};
-      final enriched = <EventParticipationModel>[];
+  return Stream.fromFuture(user.getIdToken()).asyncExpand((_) {
+    return participationRepo.watchUserParticipations(user.uid).asyncMap(
+      (participations) async {
+        final cache = <String, EventModel>{};
+        final enriched = <EventParticipationModel>[];
 
-      for (final participation in participations) {
-        var event = cache[participation.eventId];
-        event ??= await eventRepo.getEventById(participation.eventId);
-        if (event != null) {
-          cache[participation.eventId] = event;
+        for (final participation in participations) {
+          var event = cache[participation.eventId];
+          event ??= await eventRepo.getEventById(participation.eventId);
+          if (event != null) {
+            cache[participation.eventId] = event;
+          }
+          enriched.add(participation.copyWith(event: event));
         }
-        enriched.add(participation.copyWith(event: event));
-      }
 
-      return enriched;
-    },
-  );
+        return enriched;
+      },
+    );
+  });
 });
 
 List<EventParticipationModel> filterMyEvents({

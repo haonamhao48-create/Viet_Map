@@ -25,7 +25,12 @@ class ParticipationFirestoreDataSource {
   ) {
     return _firestore
         .collection('event_participations')
-        .where('user_id', isEqualTo: userId)
+        .where(
+          Filter.or(
+            Filter('user_id', isEqualTo: userId),
+            Filter('userId', isEqualTo: userId),
+          ),
+        )
         .snapshots()
         .map(
           (snapshot) => snapshot.docs

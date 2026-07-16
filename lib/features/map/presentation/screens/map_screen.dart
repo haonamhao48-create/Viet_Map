@@ -1,9 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../auth/presentation/utils/auth_logout.dart';
 import '../providers/school_provider.dart';
 import '../providers/route_provider.dart';
 import '../widgets/school_map.dart';
@@ -31,8 +31,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final authState = ref.watch(authStateProvider);
-    final userProfile = ref.watch(currentUserProfileProvider).valueOrNull;
+    final authUser = FirebaseAuth.instance.currentUser;
     final selectedSchool = ref.watch(selectedSchoolProvider);
     final startSchool = ref.watch(startSchoolProvider);
     final endSchool = ref.watch(endSchoolProvider);
@@ -68,74 +67,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     backgroundColor: const Color(0xFF0F766E),
                     iconTheme: const IconThemeData(color: Colors.white),
                     actions: [
-                      if (userProfile != null || authState.valueOrNull != null)
+                      if (authUser != null)
                         IconButton(
                           icon: const Icon(Icons.campaign_outlined),
                           color: Colors.white,
                           tooltip: 'Chiến dịch tuyển sinh',
                           onPressed: () => context.push('/campaigns'),
                         ),
-                      if (userProfile != null || authState.valueOrNull != null) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                          child: Row(
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 1.5),
-                                ),
-                                child: CircleAvatar(
-                                  radius: 17,
-                                  backgroundImage: userProfile?.avatarUrl != null
-                                      ? NetworkImage(userProfile!.avatarUrl!)
-                                      : (authState.valueOrNull?.photoURL != null
-                                          ? NetworkImage(authState.valueOrNull!.photoURL!)
-                                          : null),
-                                  child: (userProfile?.avatarUrl == null && authState.valueOrNull?.photoURL == null)
-                                      ? const Icon(Icons.person, size: 18, color: Colors.white)
-                                      : null,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                userProfile?.fullName ?? authState.valueOrNull?.displayName ?? authState.valueOrNull?.email ?? '',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.logout_rounded),
-                          color: Colors.white,
-                          tooltip: 'Đăng xuất',
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Đăng xuất'),
-                                content: const Text('Bạn có chắc chắn muốn đăng xuất?'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context, false),
-                                    child: const Text('Hủy'),
-                                  ),
-                                  FilledButton(
-                                    onPressed: () => Navigator.pop(context, true),
-                                    child: const Text('Đăng xuất'),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (confirm == true && context.mounted) {
-                              await performSignOut(ref, context);
-                            }
-                          },
-                        ),
-                      ],
+                      if (authUser != null) const MapAppBarUserActions(),
                     ],
                   ),
                   Container(
@@ -240,69 +179,91 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 }
 
-class _SidebarContent extends ConsumerWidget {
+class _SidebarContent extends ConsumerStatefulWidget {
   const _SidebarContent({required this.searchController});
 
   final TextEditingController searchController;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SidebarContent> createState() => _SidebarContentState();
+}
+
+class _SidebarContentState extends ConsumerState<_SidebarContent>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final startSchool = ref.watch(startSchoolProvider);
     final endSchool = ref.watch(endSchoolProvider);
     final routeInfo = ref.watch(routeInfoProvider);
     final selectedSchool = ref.watch(selectedSchoolProvider);
 
-    return DefaultTabController(
-      length: 2,
-      initialIndex: (startSchool != null || endSchool != null) ? 1 : 0,
-      child: Column(
-        children: [
-          Container(
-            color: const Color(0xFF0F766E),
-            child: TabBar(
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white70,
-              indicatorColor: Colors.white,
-              indicatorWeight: 3,
-              tabs: const [
-                Tab(
-                  icon: Icon(Icons.list_alt_rounded, size: 20),
-                  text: 'Danh sách',
-                ),
-                Tab(
-                  icon: Icon(Icons.directions_rounded, size: 20),
-                  text: 'Đường đi',
-                ),
-              ],
-            ),
+    final routeTabActive = startSchool != null || endSchool != null;
+    if (routeTabActive && _tabController.index != 1) {
+      _tabController.index = 1;
+    } else if (!routeTabActive && _tabController.index != 0) {
+      _tabController.index = 0;
+    }
+
+    return Column(
+      children: [
+        Container(
+          color: const Color(0xFF0F766E),
+          child: TabBar(
+            controller: _tabController,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
+            indicatorWeight: 3,
+            tabs: const [
+              Tab(
+                icon: Icon(Icons.list_alt_rounded, size: 20),
+                text: 'Danh sách',
+              ),
+              Tab(
+                icon: Icon(Icons.directions_rounded, size: 20),
+                text: 'Đường đi',
+              ),
+            ],
           ),
-          Expanded(
-            child: TabBarView(
-              children: [
-                // Tab 1: School List
-                _SchoolListTab(searchController: searchController),
-                
-                // Tab 2: Routing Flow
-                _RoutingTab(
-                  startSchool: startSchool,
-                  endSchool: endSchool,
-                  routeInfo: routeInfo,
-                  selectedSchool: selectedSchool,
-                ),
-              ],
-            ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _SchoolListTab(searchController: widget.searchController),
+              _RoutingTab(
+                startSchool: startSchool,
+                endSchool: endSchool,
+                routeInfo: routeInfo,
+                selectedSchool: selectedSchool,
+              ),
+            ],
           ),
-          const Divider(height: 1, color: Color(0xFF1A3330)),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-            child: _CampaignNavSection(),
-          ),
-          const Padding(
-            padding: EdgeInsets.all(12.0),
-            child: UserAccountHeader(),
-          ),
-        ],
-      ),
+        ),
+        const Divider(height: 1, color: Color(0xFF1A3330)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: _CampaignNavSection(),
+        ),
+        const Padding(
+          padding: EdgeInsets.all(12.0),
+          child: UserAccountHeader(),
+        ),
+      ],
     );
   }
 }
@@ -1307,10 +1268,7 @@ class _CampaignNavSection extends ConsumerWidget {
             'Xem chiến dịch và đăng ký sự kiện',
             style: TextStyle(color: Colors.white54, fontSize: 12),
           ),
-          onTap: () {
-            Navigator.of(context).pop();
-            context.push('/campaigns');
-          },
+          onTap: () => _closeDrawerThenPush(context, '/campaigns'),
         ),
         ListTile(
           leading: const Icon(Icons.event_note_outlined, color: Color(0xFF2DD4BF)),
@@ -1318,12 +1276,21 @@ class _CampaignNavSection extends ConsumerWidget {
             'Sự kiện của tôi',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
           ),
-          onTap: () {
-            Navigator.of(context).pop();
-            context.push('/my-events');
-          },
+          onTap: () => _closeDrawerThenPush(context, '/my-events'),
         ),
       ],
     );
+  }
+}
+
+Future<void> _closeDrawerThenPush(BuildContext context, String route) async {
+  final scaffoldState = Scaffold.maybeOf(context);
+  if (scaffoldState?.isDrawerOpen == true) {
+    scaffoldState!.closeDrawer();
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+  }
+
+  if (context.mounted) {
+    context.push(route);
   }
 }

@@ -45,7 +45,7 @@ class CampaignAuthGate extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     FilledButton(
-                      onPressed: () => context.go('/'),
+                      onPressed: () => context.go('/login'),
                       child: const Text('Về trang đăng nhập'),
                     ),
                   ],

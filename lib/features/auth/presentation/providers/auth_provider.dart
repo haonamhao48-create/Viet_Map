@@ -9,31 +9,22 @@ final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService();
 });
 
-final userProfileServiceProvider =
-Provider<UserProfileService>((ref) {
+final userProfileServiceProvider = Provider<UserProfileService>((ref) {
   return UserProfileService();
 });
 
 final authStateProvider = StreamProvider<User?>((ref) {
-  return FirebaseAuth.instance.authStateChanges();
+  return ref.watch(authServiceProvider).authStateChanges;
 });
 
-final currentUserProfileProvider =
-StreamProvider.autoDispose<AppUserModel?>((ref) {
-  final user = ref.watch(
-    authStateProvider.select(
-          (authState) => authState.valueOrNull,
-    ),
-  );
+final currentUserProfileProvider = StreamProvider<AppUserModel?>((ref) {
+  final user = ref.watch(authStateProvider).valueOrNull;
 
   if (user == null) {
     return Stream.value(null);
   }
 
-  return ref
-      .read(userProfileServiceProvider)
-      .watchCurrentUserProfile();
+  return ref.watch(authServiceProvider).watchCurrentUserProfile();
 });
 
-final authLoadingProvider =
-StateProvider<bool>((ref) => false);
+final authLoadingProvider = StateProvider<bool>((ref) => false);

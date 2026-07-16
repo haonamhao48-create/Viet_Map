@@ -309,15 +309,15 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
 
     // Listen for selection changes to center the camera on the school
     ref.listen<HighSchoolModel?>(selectedSchoolProvider, (previous, next) {
+      if (!mounted) return;
       if (next != null && next.hasValidCoordinates) {
-        // Zoom to at least 12 so the school marker is always visible
         final targetZoom = _currentZoom < 12.0 ? 12.0 : _currentZoom;
         _mapController.move(LatLng(next.latitude, next.longitude), targetZoom);
       }
     });
 
-    // Listen for route points changes to auto-zoom and center the route
     ref.listen<AsyncValue<List<LatLng>>>(routePointsProvider, (previous, next) {
+      if (!mounted) return;
       final points = next.valueOrNull ?? [];
       if (points.isNotEmpty) {
         final start = ref.read(startSchoolProvider);
@@ -343,6 +343,7 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
 
     // Listen for search results changes to automatically zoom and center them
     ref.listen<List<HighSchoolModel>>(filteredSchoolsProvider, (previous, next) {
+      if (!mounted) return;
       final query = ref.read(schoolSearchQueryProvider).trim();
       if (query.isNotEmpty && next.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -718,12 +719,34 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
         ),
       ),
       error: (error, stack) => Center(
-        child: Text(
-          'Lỗi tải bản đồ trường học: $error',
-          style: const TextStyle(color: Colors.red),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline, color: Colors.red, size: 40),
+              const SizedBox(height: 12),
+              Text(
+                _mapLoadErrorMessage(error),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  String _mapLoadErrorMessage(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('permission-denied') ||
+        message.contains('unauthorized')) {
+      return 'Không có quyền truy cập dữ liệu bản đồ.\n'
+          'Hãy deploy firestore.rules lên Firebase Console '
+          '(collection high_schools cần allow read cho user đã đăng nhập).';
+    }
+    return 'Lỗi tải bản đồ trường học: $error';
   }
 }
 

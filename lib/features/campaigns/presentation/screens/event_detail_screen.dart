@@ -130,7 +130,7 @@ class EventDetailScreen extends ConsumerWidget {
                         onPressed: () {
                           ref.read(selectedSchoolIdProvider.notifier).state =
                               event.schoolId;
-                          context.go('/');
+                          context.go('/home');
                         },
                         icon: const Icon(Icons.map_outlined),
                         label: const Text('Xem trên bản đồ'),

@@ -1,17 +1,24 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/high_school_firestore_datasource.dart';
 import '../../data/models/high_school_model.dart';
 
 final highSchoolDataSourceProvider =
-Provider<HighSchoolFirestoreDataSource>((ref) {
+    Provider<HighSchoolFirestoreDataSource>((ref) {
   return HighSchoolFirestoreDataSource();
 });
 
-final schoolsProvider =
-FutureProvider<List<HighSchoolModel>>((ref) async {
-  final dataSource = ref.read(highSchoolDataSourceProvider);
+final schoolsProvider = FutureProvider<List<HighSchoolModel>>((ref) async {
+  final user = await ref.watch(authStateProvider.future);
+  if (user == null) {
+    return const [];
+  }
 
+  // Đảm bảo token auth đã sẵn sàng trước khi query Firestore.
+  await user.getIdToken();
+
+  final dataSource = ref.read(highSchoolDataSourceProvider);
   return dataSource.getAll();
 });
 

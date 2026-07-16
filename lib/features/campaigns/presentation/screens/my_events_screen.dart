@@ -48,7 +48,30 @@ class MyEventsScreen extends ConsumerWidget {
               loading: () => const AppLoadingIndicator(
                 message: 'Đang tải sự kiện của bạn...',
               ),
-              error: (error, _) => Center(child: Text('Lỗi: $error')),
+              error: (error, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.lock_outline, color: Colors.red, size: 40),
+                      const SizedBox(height: 12),
+                      Text(
+                        _myEventsErrorMessage(error),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: () {
+                          ref.invalidate(myEventsWithDetailsProvider);
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Thử lại'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               data: (items) {
                 if (items.isEmpty) {
                   return Center(
@@ -147,4 +170,14 @@ class MyEventsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _myEventsErrorMessage(Object error) {
+  final message = error.toString().toLowerCase();
+  if (message.contains('permission-denied')) {
+    return 'Không có quyền đọc event_participations.\n'
+        'Deploy firestore.rules lên Firebase và đảm bảo mỗi document '
+        'có field user_id (hoặc userId) = UID của bạn.';
+  }
+  return 'Lỗi: $error';
 }

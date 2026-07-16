@@ -36,4 +36,3 @@ flutter:
 
   assets:
     - assets/config/env
-    - assets/geojson/
