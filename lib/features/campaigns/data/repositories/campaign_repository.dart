@@ -7,7 +7,9 @@ class CampaignRepository {
   final CampaignFirestoreDataSource _dataSource;
 
   Stream<List<CampaignModel>> watchCampaigns() => _dataSource.watchCampaigns();
-
-  Future<CampaignModel?> getCampaignById(String id) =>
-      _dataSource.getCampaignById(id);
+  Future<CampaignModel?> getCampaignById(String id) => _dataSource.getCampaignById(id);
+  
+  Future<void> createCampaign(CampaignModel campaign) => _dataSource.createCampaign(campaign);
+  Future<void> updateCampaign(CampaignModel campaign) => _dataSource.updateCampaign(campaign);
+  Future<void> deleteCampaign(String id) => _dataSource.deleteCampaign(id);
 }

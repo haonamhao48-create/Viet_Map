@@ -80,4 +80,41 @@ class CampaignModel {
       updatedAt: parseFirestoreDate(data['updated_at'] ?? data['updatedAt']),
     );
   }
+
+  CampaignModel copyWith({
+    String? id,
+    String? title,
+    String? description,
+    String? bannerUrl,
+    CampaignStatus? status,
+    DateTime? startDate,
+    DateTime? endDate,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return CampaignModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      bannerUrl: bannerUrl ?? this.bannerUrl,
+      status: status ?? this.status,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'title': title,
+      'description': description,
+      'banner_url': bannerUrl,
+      'status': status.firestoreValue,
+      'start_date': startDate != null ? Timestamp.fromDate(startDate!) : null,
+      'end_date': endDate != null ? Timestamp.fromDate(endDate!) : null,
+      'created_at': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+    };
+  }
 }

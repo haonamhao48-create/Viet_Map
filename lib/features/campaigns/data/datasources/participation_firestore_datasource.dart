@@ -62,10 +62,16 @@ class ParticipationFirestoreDataSource {
         .doc(participationDocId(eventId, userId));
     final eventRef = _firestore.collection('events').doc(eventId);
 
+    // Collect error outside the transaction to avoid "Future already completed"
+    String? errorMessage;
+
     await _firestore.runTransaction((transaction) async {
+      errorMessage = null;
+
       final eventSnap = await transaction.get(eventRef);
       if (!eventSnap.exists) {
-        throw ParticipationException('Sự kiện không tồn tại.');
+        errorMessage = 'Sự kiện không tồn tại.';
+        return;
       }
 
       final eventData = eventSnap.data() ?? {};
@@ -79,18 +85,20 @@ class ParticipationFirestoreDataSource {
       if (participationSnap.exists) {
         final status = participationSnap.data()?['status']?.toString() ?? '';
         if (status == ParticipationStatus.registered.firestoreValue) {
-          throw ParticipationException('Bạn đã đăng ký sự kiện này.');
+          errorMessage = 'Bạn đã đăng ký sự kiện này.';
+          return;
         }
         if (status == ParticipationStatus.attended.firestoreValue ||
             status == ParticipationStatus.absent.firestoreValue) {
-          throw ParticipationException(
-            'Không thể đăng ký lại sự kiện đã tham dự hoặc vắng mặt.',
-          );
+          errorMessage =
+              'Không thể đăng ký lại sự kiện đã tham dự hoặc vắng mặt.';
+          return;
         }
       }
 
       if (capacity > 0 && registeredCount >= capacity) {
-        throw ParticipationException('Sự kiện đã đủ số lượng đăng ký.');
+        errorMessage = 'Sự kiện đã đủ số lượng đăng ký.';
+        return;
       }
 
       final shouldIncrement = !participationSnap.exists ||
@@ -120,6 +128,10 @@ class ParticipationFirestoreDataSource {
         });
       }
     });
+
+    if (errorMessage != null) {
+      throw ParticipationException(errorMessage!);
+    }
   }
 
   Future<void> cancelRegistration({
@@ -131,16 +143,22 @@ class ParticipationFirestoreDataSource {
         .doc(participationDocId(eventId, userId));
     final eventRef = _firestore.collection('events').doc(eventId);
 
+    String? errorMessage;
+
     await _firestore.runTransaction((transaction) async {
+      errorMessage = null;
+
       final participationSnap = await transaction.get(participationRef);
       if (!participationSnap.exists) {
-        throw ParticipationException('Không tìm thấy đăng ký của bạn.');
+        errorMessage = 'Không tìm thấy đăng ký của bạn.';
+        return;
       }
 
       final status =
           participationSnap.data()?['status']?.toString() ?? '';
       if (status != ParticipationStatus.registered.firestoreValue) {
-        throw ParticipationException('Chỉ có thể hủy đăng ký đang active.');
+        errorMessage = 'Chỉ có thể hủy đăng ký đang active.';
+        return;
       }
 
       final eventSnap = await transaction.get(eventRef);
@@ -161,5 +179,89 @@ class ParticipationFirestoreDataSource {
         'updated_at': FieldValue.serverTimestamp(),
       });
     });
+
+    if (errorMessage != null) {
+      throw ParticipationException(errorMessage!);
+    }
+  }
+
+  Stream<List<EventParticipationModel>> watchEventParticipations(
+      String eventId) {
+    return _firestore
+        .collection('event_participations')
+        .where('event_id', isEqualTo: eventId)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map(EventParticipationModel.fromFirestore)
+              .toList(growable: false),
+        );
+  }
+
+  Stream<List<EventParticipationModel>> watchAllParticipations() {
+    return _firestore
+        .collection('event_participations')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map(EventParticipationModel.fromFirestore)
+              .toList(growable: false),
+        );
+  }
+
+  Future<void> confirmAttendance(String participationId) async {
+    await _firestore
+        .collection('event_participations')
+        .doc(participationId)
+        .update({
+          'status': ParticipationStatus.attended.firestoreValue,
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+  }
+
+  Future<void> markAbsent(String participationId) async {
+    await _firestore
+        .collection('event_participations')
+        .doc(participationId)
+        .update({
+          'status': ParticipationStatus.absent.firestoreValue,
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+  }
+
+  Future<void> checkIn(String eventId, String userId) async {
+    final docId = participationDocId(eventId, userId);
+    final docRef = _firestore.collection('event_participations').doc(docId);
+
+    String? errorMessage;
+
+    await _firestore.runTransaction((transaction) async {
+      errorMessage = null;
+
+      final snap = await transaction.get(docRef);
+      if (!snap.exists) {
+        errorMessage = 'Bạn chưa đăng ký sự kiện này.';
+        return;
+      }
+
+      final status = snap.data()?['status']?.toString() ?? '';
+      if (status == ParticipationStatus.attended.firestoreValue) {
+        errorMessage = 'Bạn đã check-in sự kiện này rồi.';
+        return;
+      }
+      if (status != ParticipationStatus.registered.firestoreValue) {
+        errorMessage = 'Không thể check-in (trạng thái: $status).';
+        return;
+      }
+
+      transaction.update(docRef, {
+        'status': ParticipationStatus.attended.firestoreValue,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+    });
+
+    if (errorMessage != null) {
+      throw ParticipationException(errorMessage!);
+    }
   }
 }

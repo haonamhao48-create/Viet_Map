@@ -70,6 +70,11 @@ final myEventsTabProvider =
     StateProvider<MyEventsTab>((ref) => MyEventsTab.upcoming);
 
 final campaignsStreamProvider = StreamProvider<List<CampaignModel>>((ref) {
+  final authState = ref.watch(authStateProvider);
+  final user = authState.valueOrNull;
+  if (user == null) {
+    return const Stream.empty();
+  }
   return ref.watch(campaignRepositoryProvider).watchCampaigns();
 });
 
@@ -294,3 +299,197 @@ class EventRegistrationController extends StateNotifier<AsyncValue<void>> {
     }
   }
 }
+
+final adminAllEventsProvider = StreamProvider<List<EventModel>>((ref) {
+  final authState = ref.watch(authStateProvider);
+  final user = authState.valueOrNull;
+  if (user == null) {
+    return const Stream.empty();
+  }
+  return ref.watch(eventRepositoryProvider).watchAllEvents();
+});
+
+final adminEventParticipationsProvider =
+    StreamProvider.family<List<EventParticipationModel>, String>((ref, eventId) {
+  return ref.watch(participationRepositoryProvider).watchEventParticipations(eventId);
+});
+
+final adminCampaignControllerProvider =
+    StateNotifierProvider<AdminCampaignController, AsyncValue<void>>(
+  (ref) => AdminCampaignController(ref),
+);
+
+class AdminCampaignController extends StateNotifier<AsyncValue<void>> {
+  AdminCampaignController(this.ref) : super(const AsyncData(null));
+
+  final Ref ref;
+
+  Future<bool> create(CampaignModel campaign) async {
+    state = const AsyncLoading();
+    try {
+      await ref.read(campaignRepositoryProvider).createCampaign(campaign);
+      state = const AsyncData(null);
+      ref.invalidate(campaignsStreamProvider);
+      return true;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      return false;
+    }
+  }
+
+  Future<bool> updateCampaign(CampaignModel campaign) async {
+    state = const AsyncLoading();
+    try {
+      await ref.read(campaignRepositoryProvider).updateCampaign(campaign);
+      state = const AsyncData(null);
+      ref.invalidate(campaignsStreamProvider);
+      ref.invalidate(campaignDetailProvider(campaign.id));
+      return true;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      return false;
+    }
+  }
+
+  Future<bool> delete(String id) async {
+    state = const AsyncLoading();
+    try {
+      await ref.read(campaignRepositoryProvider).deleteCampaign(id);
+      state = const AsyncData(null);
+      ref.invalidate(campaignsStreamProvider);
+      return true;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      return false;
+    }
+  }
+}
+
+final adminEventControllerProvider =
+    StateNotifierProvider<AdminEventController, AsyncValue<void>>(
+  (ref) => AdminEventController(ref),
+);
+
+class AdminEventController extends StateNotifier<AsyncValue<void>> {
+  AdminEventController(this.ref) : super(const AsyncData(null));
+
+  final Ref ref;
+
+  Future<bool> create(EventModel event) async {
+    state = const AsyncLoading();
+    try {
+      await ref.read(eventRepositoryProvider).createEvent(event);
+      state = const AsyncData(null);
+      ref.invalidate(campaignEventsProvider(event.campaignId));
+      ref.invalidate(adminAllEventsProvider);
+      return true;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      return false;
+    }
+  }
+
+  Future<bool> updateEvent(EventModel event) async {
+    state = const AsyncLoading();
+    try {
+      await ref.read(eventRepositoryProvider).updateEvent(event);
+      state = const AsyncData(null);
+      ref.invalidate(campaignEventsProvider(event.campaignId));
+      ref.invalidate(eventDetailProvider(event.id));
+      ref.invalidate(adminAllEventsProvider);
+      return true;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      return false;
+    }
+  }
+
+  Future<bool> delete(String eventId, String campaignId) async {
+    state = const AsyncLoading();
+    try {
+      await ref.read(eventRepositoryProvider).deleteEvent(eventId);
+      state = const AsyncData(null);
+      ref.invalidate(campaignEventsProvider(campaignId));
+      ref.invalidate(adminAllEventsProvider);
+      return true;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      return false;
+    }
+  }
+}
+
+final adminParticipationControllerProvider =
+    StateNotifierProvider<AdminParticipationController, AsyncValue<void>>(
+  (ref) => AdminParticipationController(ref),
+);
+
+class AdminParticipationController extends StateNotifier<AsyncValue<void>> {
+  AdminParticipationController(this.ref) : super(const AsyncData(null));
+
+  final Ref ref;
+
+  Future<void> confirm(String participationId, String eventId) async {
+    state = const AsyncLoading();
+    try {
+      await ref.read(participationRepositoryProvider).confirmAttendance(participationId);
+      state = const AsyncData(null);
+      ref.invalidate(adminEventParticipationsProvider(eventId));
+      ref.invalidate(eventDetailProvider(eventId));
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
+  }
+
+  Future<void> markAbsent(String participationId, String eventId) async {
+    state = const AsyncLoading();
+    try {
+      await ref.read(participationRepositoryProvider).markAbsent(participationId);
+      state = const AsyncData(null);
+      ref.invalidate(adminEventParticipationsProvider(eventId));
+      ref.invalidate(eventDetailProvider(eventId));
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
+  }
+}
+
+final userCheckInControllerProvider =
+    StateNotifierProvider<UserCheckInController, AsyncValue<void>>(
+  (ref) => UserCheckInController(ref),
+);
+
+class UserCheckInController extends StateNotifier<AsyncValue<void>> {
+  UserCheckInController(this.ref) : super(const AsyncData(null));
+
+  final Ref ref;
+
+  Future<bool> checkIn(String eventId) async {
+    final user = ref.read(authStateProvider).valueOrNull;
+    if (user == null) {
+      state = AsyncError('Bạn cần đăng nhập.', StackTrace.current);
+      return false;
+    }
+
+    state = const AsyncLoading();
+    try {
+      await ref.read(participationRepositoryProvider).checkIn(eventId, user.uid);
+      state = const AsyncData(null);
+      ref.invalidate(eventParticipationProvider(eventId));
+      ref.invalidate(myEventsWithDetailsProvider);
+      return true;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      return false;
+    }
+  }
+}
+
+final allParticipationsProvider = StreamProvider<List<EventParticipationModel>>((ref) {
+  final authState = ref.watch(authStateProvider);
+  final user = authState.valueOrNull;
+  if (user == null) {
+    return const Stream.empty();
+  }
+  return ref.watch(participationRepositoryProvider).watchAllParticipations();
+});

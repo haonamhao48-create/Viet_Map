@@ -81,9 +81,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       final profile = next.valueOrNull;
       if (profile == null) return;
 
-      final wasLoggedOut = previous?.valueOrNull == null;
-      if (!wasLoggedOut) return;
-
       navigateAfterLogin(context, ref);
     });
 

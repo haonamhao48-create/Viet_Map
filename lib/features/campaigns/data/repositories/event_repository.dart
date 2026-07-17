@@ -10,4 +10,9 @@ class EventRepository {
       _dataSource.watchEventsByCampaign(campaignId);
 
   Future<EventModel?> getEventById(String id) => _dataSource.getEventById(id);
+  
+  Stream<List<EventModel>> watchAllEvents() => _dataSource.watchAllEvents();
+  Future<void> createEvent(EventModel event) => _dataSource.createEvent(event);
+  Future<void> updateEvent(EventModel event) => _dataSource.updateEvent(event);
+  Future<void> deleteEvent(String id) => _dataSource.deleteEvent(id);
 }

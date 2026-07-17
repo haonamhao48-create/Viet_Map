@@ -2,8 +2,14 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
       allow create: if request.auth != null
         && request.auth.uid == userId
         && request.resource.data.uid == userId
@@ -38,17 +44,19 @@ service cloud.firestore {
 
     match /campaigns/{campaignId} {
       allow read: if request.auth != null;
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
     match /events/{eventId} {
       allow read: if request.auth != null;
-      allow create, delete: if false;
-      allow update: if request.auth != null
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        request.auth != null
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['registered_count', 'updated_at'])
         && request.resource.data.registered_count is int
-        && request.resource.data.registered_count >= 0;
+        && request.resource.data.registered_count >= 0
+      );
     }
 
     match /event_participations/{participationId} {
@@ -60,28 +68,36 @@ service cloud.firestore {
         return data.get('event_id', data.get('eventId', ''));
       }
 
+      // Allow read of both existing docs (own or admin) AND
+      // non-existent docs (resource == null) so transactions can check
+      // whether a participation already exists before creating one.
       allow read: if request.auth != null
-        && participationUserId(resource.data) == request.auth.uid;
+        && (resource == null
+            || participationUserId(resource.data) == request.auth.uid
+            || isAdmin());
 
       allow create: if request.auth != null
         && participationUserId(request.resource.data) == request.auth.uid
         && participationEventId(request.resource.data) is string
-        && (
-          participationId == participationEventId(request.resource.data) + '_' + request.auth.uid
-        )
         && request.resource.data.status == 'registered';
 
       allow update: if request.auth != null
-        && participationUserId(resource.data) == request.auth.uid
-        && participationUserId(request.resource.data) == request.auth.uid
         && (
-          (resource.data.status == 'registered'
-            && request.resource.data.status == 'cancelled')
-          || (resource.data.status == 'cancelled'
-            && request.resource.data.status == 'registered')
+          isAdmin() || (
+            participationUserId(resource.data) == request.auth.uid
+            && participationUserId(request.resource.data) == request.auth.uid
+            && (
+              (resource.data.status == 'registered'
+                && request.resource.data.status == 'cancelled')
+              || (resource.data.status == 'cancelled'
+                && request.resource.data.status == 'registered')
+              || (resource.data.status == 'registered'
+                && request.resource.data.status == 'attended')
+            )
+          )
         );
 
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
   }
 }

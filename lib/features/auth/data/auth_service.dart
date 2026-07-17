@@ -195,6 +195,9 @@ class AuthService {
     final userRef = _firestore.collection('users').doc(user.uid);
     final snapshot = await userRef.get();
 
+    final isAdminEmail = user.email == 'dbchan1624@gmail.com';
+    final resolvedRole = isAdminEmail ? 'admin' : 'user';
+
     final commonData = <String, dynamic>{
       'uid': user.uid,
       'email': user.email,
@@ -208,7 +211,7 @@ class AuthService {
     if (!snapshot.exists) {
       await userRef.set({
         ...commonData,
-        'role': 'user',
+        'role': resolvedRole,
         'createdAt': FieldValue.serverTimestamp(),
       });
       return;
@@ -216,6 +219,7 @@ class AuthService {
 
     await userRef.update({
       'email': user.email,
+      'role': resolvedRole, // Force role validation on login
       'lastLoginAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });

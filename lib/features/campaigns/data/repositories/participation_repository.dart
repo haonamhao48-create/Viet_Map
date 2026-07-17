@@ -33,4 +33,19 @@ class ParticipationRepository {
     required String userId,
   }) =>
       _dataSource.cancelRegistration(eventId: eventId, userId: userId);
+
+  Stream<List<EventParticipationModel>> watchEventParticipations(String eventId) =>
+      _dataSource.watchEventParticipations(eventId);
+
+  Stream<List<EventParticipationModel>> watchAllParticipations() =>
+      _dataSource.watchAllParticipations();
+
+  Future<void> confirmAttendance(String participationId) =>
+      _dataSource.confirmAttendance(participationId);
+
+  Future<void> markAbsent(String participationId) =>
+      _dataSource.markAbsent(participationId);
+
+  Future<void> checkIn(String eventId, String userId) =>
+      _dataSource.checkIn(eventId, userId);
 }

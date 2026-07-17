@@ -18,13 +18,13 @@ class RouteInfoCard extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Card(
-      elevation: 6,
-      shadowColor: Colors.black.withValues(alpha: 0.15),
+      elevation: 3,
+      shadowColor: Colors.black.withValues(alpha: 0.1),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
+        side: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
-      color: theme.colorScheme.surfaceContainerHighest,
+      color: Colors.white,
       child: Container(
         width: MediaQuery.of(context).size.width >= 800 ? 340 : null,
         padding: const EdgeInsets.all(16.0),

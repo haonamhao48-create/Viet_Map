@@ -9,13 +9,6 @@
       ]
     },
     {
-      "collectionGroup": "campaigns",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "start_date", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "events",
       "queryScope": "COLLECTION",
       "fields": [

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/widgets/top_notification.dart';
+
 import '../../../../shared/widgets/loading_indicator.dart';
 import '../../../map/presentation/providers/school_provider.dart';
+import '../../data/models/event_model.dart';
 import '../../data/models/event_participation_model.dart';
 import '../providers/campaign_provider.dart';
 import '../utils/date_formatters.dart';
@@ -23,9 +26,15 @@ class EventDetailScreen extends ConsumerWidget {
     ref.listen(eventRegistrationControllerProvider, (previous, next) {
       next.whenOrNull(
         error: (error, _) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(participationErrorMessage(error))),
-          );
+          TopNotification.show(context, participationErrorMessage(error), isError: true);
+        },
+      );
+    });
+
+    ref.listen(userCheckInControllerProvider, (previous, next) {
+      next.whenOrNull(
+        error: (error, _) {
+          TopNotification.show(context, participationErrorMessage(error), isError: true);
         },
       );
     });
@@ -46,6 +55,7 @@ class EventDetailScreen extends ConsumerWidget {
 
           final participation = participationAsync.valueOrNull;
           final isLoadingAction = registrationState.isLoading;
+          final isLoadingCheckIn = ref.watch(userCheckInControllerProvider).isLoading;
 
           return Column(
             children: [
@@ -139,9 +149,11 @@ class EventDetailScreen extends ConsumerWidget {
                     _buildActionButton(
                       context: context,
                       ref: ref,
+                      event: event,
                       participation: participation,
                       isFull: event.isFull,
                       isLoading: isLoadingAction,
+                      isLoadingCheckIn: isLoadingCheckIn,
                     ),
                   ],
                 ),
@@ -156,58 +168,106 @@ class EventDetailScreen extends ConsumerWidget {
   Widget _buildActionButton({
     required BuildContext context,
     required WidgetRef ref,
+    required EventModel event,
     required EventParticipationModel? participation,
     required bool isFull,
     required bool isLoading,
+    required bool isLoadingCheckIn,
   }) {
     final status = participation?.status;
 
     if (status == ParticipationStatus.registered) {
-      return FilledButton.icon(
-        onPressed: isLoading
-            ? null
-            : () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Hủy đăng ký'),
-                    content: const Text(
-                      'Bạn có chắc muốn hủy đăng ký sự kiện này?',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Không'),
-                      ),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Hủy đăng ký'),
-                      ),
-                    ],
+      final now = DateTime.now();
+      final isHappening = event.status == EventStatus.ongoing ||
+          (event.startDate != null && event.endDate != null &&
+           now.isAfter(event.startDate!) && now.isBefore(event.endDate!));
+      final canCheckIn = isHappening;
+
+      return Row(
+        children: [
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: isLoading || isLoadingCheckIn
+                  ? null
+                  : () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Hủy đăng ký'),
+                          content: const Text(
+                            'Bạn có chắc muốn hủy đăng ký sự kiện này?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Không'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Hủy đăng ký'),
+                            ),
+                          ],
+                        ),
+                      );
+                        if (confirm == true && context.mounted) {
+                          await ref
+                              .read(eventRegistrationControllerProvider.notifier)
+                              .cancel(eventId);
+                          if (context.mounted) {
+                            TopNotification.show(context, 'Đã hủy đăng ký.');
+                          }
+                        }
+                    },
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFDC2626),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              icon: isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.cancel_outlined),
+              label: const Text('Hủy đăng ký'),
+            ),
+          ),
+          if (canCheckIn) ...[
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: isLoading || isLoadingCheckIn
+                    ? null
+                    : () async {
+                        final ok = await ref
+                            .read(userCheckInControllerProvider.notifier)
+                            .checkIn(eventId);
+                        if (ok && context.mounted) {
+                          TopNotification.show(context, 'Check-in thành công!');
+                        }
+                      },
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F766E),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                );
-                if (confirm == true && context.mounted) {
-                  await ref
-                      .read(eventRegistrationControllerProvider.notifier)
-                      .cancel(eventId);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Đã hủy đăng ký.')),
-                    );
-                  }
-                }
-              },
-        style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFFDC2626),
-        ),
-        icon: isLoading
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.cancel_outlined),
-        label: const Text('Hủy đăng ký'),
+                ),
+                icon: isLoadingCheckIn
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.check_circle_outline_rounded),
+                label: const Text('Check-in'),
+              ),
+            ),
+          ],
+        ],
       );
     }
 
@@ -215,6 +275,12 @@ class EventDetailScreen extends ConsumerWidget {
         status == ParticipationStatus.absent ||
         status == ParticipationStatus.cancelled) {
       return FilledButton(
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
         onPressed: null,
         child: Text(
           status == ParticipationStatus.cancelled
@@ -225,6 +291,13 @@ class EventDetailScreen extends ConsumerWidget {
     }
 
     return FilledButton.icon(
+      style: FilledButton.styleFrom(
+        backgroundColor: const Color(0xFF0F766E),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
       onPressed: isLoading || isFull
           ? null
           : () async {
@@ -232,9 +305,7 @@ class EventDetailScreen extends ConsumerWidget {
                   .read(eventRegistrationControllerProvider.notifier)
                   .register(eventId);
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đăng ký thành công!')),
-                );
+                TopNotification.show(context, 'Đăng ký thành công!');
               }
             },
       icon: isLoading

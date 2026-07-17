@@ -105,6 +105,7 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
 
   LatLngBounds? _visibleBounds;
   double _currentZoom = _defaultZoom;
+  String? _lastCenteredSchoolId;
 
   final Map<String, List<List<LatLng>>> _provinceBoundaries = {};
 
@@ -300,6 +301,22 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
     final selectedSchool = ref.watch(selectedSchoolProvider);
     final startSchool = ref.watch(startSchoolProvider);
     final endSchool = ref.watch(endSchoolProvider);
+
+    if (selectedSchool == null) {
+      _lastCenteredSchoolId = null;
+    } else if (selectedSchool.id != _lastCenteredSchoolId) {
+      _lastCenteredSchoolId = selectedSchool.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (selectedSchool.hasValidCoordinates) {
+          final targetZoom = _currentZoom < 12.0 ? 12.0 : _currentZoom;
+          _mapController.move(
+            LatLng(selectedSchool.latitude, selectedSchool.longitude),
+            targetZoom,
+          );
+        }
+      });
+    }
     
     // Watch OSRM route points
     final routePointsAsync = ref.watch(routePointsProvider);
@@ -314,6 +331,12 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
         final targetZoom = _currentZoom < 12.0 ? 12.0 : _currentZoom;
         _mapController.move(LatLng(next.latitude, next.longitude), targetZoom);
       }
+    });
+
+    // Listen for custom camera movement events
+    ref.listen<MapMoveEvent?>(mapMoveEventProvider, (previous, next) {
+      if (!mounted || next == null) return;
+      _mapController.move(LatLng(next.latitude, next.longitude), next.zoom);
     });
 
     ref.listen<AsyncValue<List<LatLng>>>(routePointsProvider, (previous, next) {
@@ -627,12 +650,6 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
               initialZoom: _defaultZoom,
               minZoom: 5.0,
               maxZoom: 18.0,
-              cameraConstraint: CameraConstraint.contain(
-                bounds: LatLngBounds(
-                  const LatLng(6.0, 101.0),
-                  const LatLng(24.0, 118.0),
-                ),
-              ),
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all,
               ),

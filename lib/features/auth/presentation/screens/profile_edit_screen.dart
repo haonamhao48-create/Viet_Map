@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../app/widgets/top_notification.dart';
 import '../providers/auth_provider.dart';
+import '../utils/auth_logout.dart';
 
 class ProfileEditScreen extends ConsumerStatefulWidget {
   const ProfileEditScreen({super.key});
@@ -60,14 +62,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final displayName = _nameController.text.trim();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B1F1E),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: const Color(0xFF0F766E),
         foregroundColor: Colors.white,
         elevation: 0,
         toolbarHeight: 56,
         title: const Text(
-          'Hồ sơ cá nhân',
+          'HỒ SƠ CÁ NHÂN',
           style: TextStyle(
             letterSpacing: 1.2,
             fontWeight: FontWeight.w800,
@@ -85,6 +87,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Avatar stack
                   Center(
                     child: Stack(
                       children: [
@@ -92,21 +95,23 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: const Color(0xFF0F766E).withValues(alpha: 0.4),
-                              width: 2,
+                              color: const Color(0xFF0F766E).withValues(alpha: 0.3),
+                              width: 2.5,
                             ),
                           ),
                           child: CircleAvatar(
                             radius: 60,
-                            backgroundColor: Colors.white.withValues(alpha: 0.1),
+                            backgroundColor: const Color(0xFF0F766E).withValues(alpha: 0.1),
                             backgroundImage: _avatarImage(avatarUrl),
                             child: _avatarImage(avatarUrl) == null
                                 ? Text(
                                     displayName.isNotEmpty
                                         ? displayName[0].toUpperCase()
                                         : '?',
-                                    style: theme.textTheme.headlineMedium
-                                        ?.copyWith(fontWeight: FontWeight.w700, color: Colors.white),
+                                    style: theme.textTheme.headlineMedium?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFF0F766E),
+                                    ),
                                   )
                                 : null,
                           ),
@@ -115,8 +120,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                           right: 0,
                           bottom: 0,
                           child: Material(
-                            color: const Color(0xFF0F766E).withValues(alpha: 0.3),
+                            color: const Color(0xFF0F766E),
                             shape: const CircleBorder(),
+                            elevation: 2,
                             child: InkWell(
                               customBorder: const CircleBorder(),
                               onTap: _isSaving ? null : _pickAvatar,
@@ -134,41 +140,26 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Center(
                     child: Text(
                       'Chạm biểu tượng camera để đổi ảnh đại diện',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.white38,
+                        color: theme.colorScheme.onSurfaceVariant,
                         fontSize: 12,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
+
+                  // Họ và tên
                   TextFormField(
                     controller: _nameController,
                     textInputAction: TextInputAction.next,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
+                    style: TextStyle(color: theme.colorScheme.onSurface),
+                    decoration: const InputDecoration(
                       labelText: 'Họ và tên',
-                      labelStyle: const TextStyle(color: Colors.white54),
-                      hintStyle: const TextStyle(color: Colors.white30),
-                      prefixIcon: const Icon(Icons.person_outline_rounded),
-                      prefixIconColor: Colors.white38,
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.07),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFF0F766E), width: 1.5),
-                      ),
+                      prefixIcon: Icon(Icons.person_outline_rounded),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -178,92 +169,49 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
+
+                  // Email (Readonly)
                   TextFormField(
                     controller: _emailController,
                     readOnly: true,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
+                    style: TextStyle(color: theme.colorScheme.onSurface),
+                    decoration: const InputDecoration(
                       labelText: 'Email',
-                      labelStyle: const TextStyle(color: Colors.white54),
-                      hintStyle: const TextStyle(color: Colors.white30),
-                      prefixIcon: const Icon(Icons.email_outlined),
-                      prefixIconColor: Colors.white38,
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.07),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFF0F766E), width: 1.5),
-                      ),
+                      prefixIcon: Icon(Icons.email_outlined),
                     ),
                   ),
                   const SizedBox(height: 16),
+
+                  // Số điện thoại
                   TextFormField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
+                    style: TextStyle(color: theme.colorScheme.onSurface),
+                    decoration: const InputDecoration(
                       labelText: 'Số điện thoại',
                       hintText: 'Tùy chọn',
-                      labelStyle: const TextStyle(color: Colors.white54),
-                      hintStyle: const TextStyle(color: Colors.white30),
-                      prefixIcon: const Icon(Icons.phone_outlined),
-                      prefixIconColor: Colors.white38,
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.07),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFF0F766E), width: 1.5),
-                      ),
+                      prefixIcon: Icon(Icons.phone_outlined),
                     ),
                   ),
                   const SizedBox(height: 16),
+
+                  // Giới thiệu
                   TextFormField(
                     controller: _bioController,
                     maxLines: 3,
                     textInputAction: TextInputAction.done,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
+                    style: TextStyle(color: theme.colorScheme.onSurface),
+                    decoration: const InputDecoration(
                       labelText: 'Giới thiệu',
                       hintText: 'Viết vài dòng về bạn...',
                       alignLabelWithHint: true,
-                      labelStyle: const TextStyle(color: Colors.white54),
-                      hintStyle: const TextStyle(color: Colors.white30),
-                      prefixIcon: const Icon(Icons.notes_rounded),
-                      prefixIconColor: Colors.white38,
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.07),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Color(0xFF0F766E), width: 1.5),
-                      ),
+                      prefixIcon: Icon(Icons.notes_rounded),
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 32),
+
+                  // Save Button
                   FilledButton.icon(
                     onPressed: _isSaving ? null : _saveProfile,
                     style: FilledButton.styleFrom(
@@ -271,7 +219,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(18),
                       ),
                       textStyle: const TextStyle(fontWeight: FontWeight.w700),
                     ),
@@ -286,6 +234,23 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                           )
                         : const Icon(Icons.save_rounded),
                     label: Text(_isSaving ? 'Đang lưu...' : 'Lưu thay đổi'),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Logout Button
+                  OutlinedButton.icon(
+                    onPressed: () => performSignOut(ref, context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red.shade700,
+                      side: BorderSide(color: Colors.red.shade700),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    icon: const Icon(Icons.logout_rounded),
+                    label: const Text('Đăng xuất'),
                   ),
                 ],
               ),
@@ -335,15 +300,11 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã cập nhật hồ sơ.')),
-      );
+      TopNotification.show(context, 'Đã cập nhật hồ sơ.');
       Navigator.of(context).pop();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_friendlyError(error))),
-      );
+      TopNotification.show(context, _friendlyError(error), isError: true);
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);

@@ -8,17 +8,18 @@ class AppTheme {
       primary: const Color(0xFF0F766E),
       secondary: const Color(0xFF2563EB),
       tertiary: const Color(0xFFF59E0B),
-      surface: const Color(0xFFF6FAFC),
+      surface: Colors.white,
     );
 
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: const Color(0xFFF3F8FB),
+      scaffoldBackgroundColor: const Color(0xFFF8F9FA),
       cardTheme: CardThemeData(
-        color: colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        color: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 1.5,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -27,22 +28,24 @@ class AppTheme {
           color: colorScheme.onSurfaceVariant.withValues(alpha: 0.72),
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(28),
+          borderSide: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(28),
           borderSide: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(28),
           borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 16,
+          horizontal: 20,
+          vertical: 14,
         ),
       ),
       chipTheme: ChipThemeData(

@@ -26,4 +26,22 @@ class CampaignFirestoreDataSource {
     if (!snapshot.exists) return null;
     return CampaignModel.fromFirestore(snapshot);
   }
+
+  Future<void> createCampaign(CampaignModel campaign) async {
+    final docRef = campaign.id.isEmpty
+        ? _firestore.collection('campaigns').doc()
+        : _firestore.collection('campaigns').doc(campaign.id);
+    await docRef.set(campaign.copyWith(id: docRef.id).toFirestore());
+  }
+
+  Future<void> updateCampaign(CampaignModel campaign) async {
+    await _firestore
+        .collection('campaigns')
+        .doc(campaign.id)
+        .update(campaign.toFirestore());
+  }
+
+  Future<void> deleteCampaign(String id) async {
+    await _firestore.collection('campaigns').doc(id).delete();
+  }
 }

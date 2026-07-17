@@ -114,4 +114,59 @@ class EventModel {
       updatedAt: parseFirestoreDate(data['updated_at'] ?? data['updatedAt']),
     );
   }
+
+  EventModel copyWith({
+    String? id,
+    String? campaignId,
+    String? title,
+    String? description,
+    String? imageUrl,
+    String? schoolId,
+    String? schoolName,
+    String? address,
+    int? capacity,
+    int? registeredCount,
+    EventStatus? status,
+    DateTime? startDate,
+    DateTime? endDate,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return EventModel(
+      id: id ?? this.id,
+      campaignId: campaignId ?? this.campaignId,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      imageUrl: imageUrl ?? this.imageUrl,
+      schoolId: schoolId ?? this.schoolId,
+      schoolName: schoolName ?? this.schoolName,
+      address: address ?? this.address,
+      capacity: capacity ?? this.capacity,
+      registeredCount: registeredCount ?? this.registeredCount,
+      status: status ?? this.status,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'campaign_id': campaignId,
+      'title': title,
+      'description': description,
+      'image_url': imageUrl,
+      'school_id': schoolId,
+      'school_name': schoolName,
+      'address': address,
+      'capacity': capacity,
+      'registered_count': registeredCount,
+      'status': status.firestoreValue,
+      'start_date': startDate != null ? Timestamp.fromDate(startDate!) : null,
+      'end_date': endDate != null ? Timestamp.fromDate(endDate!) : null,
+      'created_at': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+    };
+  }
 }

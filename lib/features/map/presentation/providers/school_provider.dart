@@ -74,3 +74,19 @@ Provider<List<HighSchoolModel>>((ref) {
             .contains(query);
   }).toList();
 });
+
+class MapMoveEvent {
+  final double latitude;
+  final double longitude;
+  final double zoom;
+  final DateTime timestamp;
+
+  MapMoveEvent({
+    required this.latitude,
+    required this.longitude,
+    required this.zoom,
+    required this.timestamp,
+  });
+}
+
+final mapMoveEventProvider = StateProvider<MapMoveEvent?>((ref) => null);
