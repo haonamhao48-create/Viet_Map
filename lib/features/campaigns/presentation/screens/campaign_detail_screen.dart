@@ -158,9 +158,11 @@ class CampaignDetailScreen extends ConsumerWidget {
                                     padding: const EdgeInsets.only(bottom: 12),
                                     child: EventCard(
                                       event: event,
-                                      onTap: () => context.push(
-                                        '/events/${event.id}',
-                                      ),
+                                      onTap: () async {
+                                        await context.push(
+                                          '/events/${event.id}',
+                                        );
+                                      },
                                     ),
                                   ),
                                 )

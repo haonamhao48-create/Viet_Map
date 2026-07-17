@@ -42,7 +42,9 @@ class AdminEventListScreen extends ConsumerWidget {
                   const Text('Chưa có sự kiện nào trong chiến dịch này.'),
                   const SizedBox(height: 16),
                   FilledButton.icon(
-                    onPressed: () => context.push('/admin/campaigns/$campaignId/events/new'),
+                    onPressed: () async {
+                      await context.push('/admin/campaigns/$campaignId/events/new');
+                    },
                     icon: const Icon(Icons.add),
                     label: const Text('Tạo sự kiện mới'),
                     style: FilledButton.styleFrom(
@@ -111,12 +113,16 @@ class AdminEventListScreen extends ConsumerWidget {
                       IconButton(
                         icon: const Icon(Icons.people_alt_outlined),
                         tooltip: 'Danh sách đăng ký',
-                        onPressed: () => context.push('/admin/events/${event.id}/participants'),
+                        onPressed: () async {
+                          await context.push('/admin/events/${event.id}/participants');
+                        },
                       ),
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),
                         tooltip: 'Chỉnh sửa',
-                        onPressed: () => context.push('/admin/events/${event.id}/edit'),
+                        onPressed: () async {
+                          await context.push('/admin/events/${event.id}/edit');
+                        },
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -158,7 +164,9 @@ class AdminEventListScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  onTap: () => context.push('/admin/events/${event.id}'),
+                  onTap: () async {
+                    await context.push('/admin/events/${event.id}');
+                  },
                 ),
               );
             },
@@ -170,7 +178,9 @@ class AdminEventListScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: const Color(0xFF0F766E),
         foregroundColor: Colors.white,
-        onPressed: () => context.push('/admin/campaigns/$campaignId/events/new'),
+        onPressed: () async {
+          await context.push('/admin/campaigns/$campaignId/events/new');
+        },
         icon: const Icon(Icons.add),
         label: const Text('Thêm sự kiện'),
       ),

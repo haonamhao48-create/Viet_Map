@@ -251,7 +251,9 @@ class _RecentCampaignsList extends StatelessWidget {
                   ),
                 ),
                 TextButton(
-                  onPressed: () => context.push('/admin/campaigns'),
+                  onPressed: () async {
+                    await context.push('/admin/campaigns');
+                  },
                   child: const Text('Xem tất cả'),
                 ),
               ],
@@ -290,7 +292,9 @@ class _RecentCampaignsList extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     trailing: CampaignStatusChip(status: item.status),
-                    onTap: () => context.push('/admin/campaigns'),
+                    onTap: () async {
+                      await context.push('/admin/campaigns');
+                    },
                   );
                 },
               );
@@ -338,7 +342,9 @@ class _QuickActionsPanel extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
-            onPressed: () => context.push('/admin/campaigns/new'),
+            onPressed: () async {
+              await context.push('/admin/campaigns/new');
+            },
             icon: const Icon(Icons.add_circle_outline_rounded),
             label: const Text('Tạo chiến dịch mới'),
           ),
@@ -349,7 +355,9 @@ class _QuickActionsPanel extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
-            onPressed: () => context.push('/admin/statistics'),
+            onPressed: () async {
+              await context.push('/admin/statistics');
+            },
             icon: const Icon(Icons.bar_chart_outlined),
             label: const Text('Xem thống kê chi tiết'),
           ),

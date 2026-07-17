@@ -100,7 +100,9 @@ class MyEventsScreen extends ConsumerWidget {
                       return Card(
                         child: InkWell(
                           borderRadius: BorderRadius.circular(24),
-                          onTap: () => context.push('/events/${item.eventId}'),
+                          onTap: () async {
+                            await context.push('/events/${item.eventId}');
+                          },
                           child: Padding(
                             padding: const EdgeInsets.all(16),
                             child: Column(
