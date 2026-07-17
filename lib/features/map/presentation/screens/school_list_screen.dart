@@ -147,7 +147,7 @@ class _SchoolListScreenState extends ConsumerState<SchoolListScreen> {
                             onTap: () {
                               ref.read(selectedSchoolIdProvider.notifier).state = school.id;
                               ref.read(schoolSearchQueryProvider.notifier).state = school.tenTruong;
-                              context.go('/home'); // Go directly to Map tab to show school!
+                              context.go('/home');
                             },
                           );
                         },

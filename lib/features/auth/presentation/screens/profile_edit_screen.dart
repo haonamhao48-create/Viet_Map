@@ -2,7 +2,9 @@ import 'dart:typed_data';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../app/widgets/top_notification.dart';
@@ -55,7 +57,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(currentUserProfileProvider).valueOrNull;
-    final authUser = ref.watch(authStateProvider).valueOrNull;
+    final authUser = FirebaseAuth.instance.currentUser;
     final theme = Theme.of(context);
 
     final avatarUrl = profile?.avatarUrl ?? authUser?.photoURL;
@@ -301,7 +303,18 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
       if (!mounted) return;
       TopNotification.show(context, 'Đã cập nhật hồ sơ.');
-      Navigator.of(context).pop();
+
+      setState(() {
+        _pickedImage = null;
+        _pickedImageBytes = null;
+      });
+
+      // Admin mở /admin/profile qua bottom tab — không pop.
+      if (context.canPop()) {
+        await SchedulerBinding.instance.endOfFrame;
+        if (!mounted || !context.canPop()) return;
+        context.pop();
+      }
     } catch (error) {
       if (!mounted) return;
       TopNotification.show(context, _friendlyError(error), isError: true);

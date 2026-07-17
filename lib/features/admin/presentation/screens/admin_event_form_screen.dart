@@ -1,6 +1,3 @@
-import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,7 +24,6 @@ class _AdminEventFormScreenState extends ConsumerState<AdminEventFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
-  final _imageController = TextEditingController();
   final _capacityController = TextEditingController(text: '50');
 
   String _campaignId = '';
@@ -40,7 +36,6 @@ class _AdminEventFormScreenState extends ConsumerState<AdminEventFormScreen> {
   
   bool _isEdit = false;
   bool _isLoadingData = false;
-  bool _isUploadingImage = false;
   int _registeredCount = 0;
 
   @override
@@ -59,7 +54,6 @@ class _AdminEventFormScreenState extends ConsumerState<AdminEventFormScreen> {
     if (event != null) {
       _titleController.text = event.title;
       _descController.text = event.description;
-      _imageController.text = event.imageUrl;
       _capacityController.text = event.capacity.toString();
       setState(() {
         _campaignId = event.campaignId;
@@ -75,42 +69,10 @@ class _AdminEventFormScreenState extends ConsumerState<AdminEventFormScreen> {
     setState(() => _isLoadingData = false);
   }
 
-  Future<void> _pickAndUploadImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    
-    if (pickedFile != null) {
-      setState(() => _isUploadingImage = true);
-      try {
-        final file = File(pickedFile.path);
-        final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final storageRef = FirebaseStorage.instance.ref().child('events').child(fileName);
-        
-        await storageRef.putFile(file);
-        final downloadUrl = await storageRef.getDownloadURL();
-        
-        setState(() {
-          _imageController.text = downloadUrl;
-        });
-        
-        if (mounted) {
-          TopNotification.show(context, 'Tải ảnh lên thành công!');
-        }
-      } catch (e) {
-        if (mounted) {
-          TopNotification.show(context, 'Lỗi tải ảnh: $e', isError: true);
-        }
-      } finally {
-        setState(() => _isUploadingImage = false);
-      }
-    }
-  }
-
   @override
   void dispose() {
     _titleController.dispose();
     _descController.dispose();
-    _imageController.dispose();
     _capacityController.dispose();
     super.dispose();
   }
@@ -178,7 +140,7 @@ class _AdminEventFormScreenState extends ConsumerState<AdminEventFormScreen> {
       campaignId: _campaignId,
       title: _titleController.text.trim(),
       description: _descController.text.trim(),
-      imageUrl: _imageController.text.trim(),
+      imageUrl: '',
       schoolId: _schoolId,
       schoolName: _schoolName,
       address: _address,
@@ -253,64 +215,6 @@ class _AdminEventFormScreenState extends ConsumerState<AdminEventFormScreen> {
                     val == null || val.trim().isEmpty ? 'Vui lòng nhập mô tả sự kiện' : null,
               ),
               const SizedBox(height: 20),
-              // Image picker and preview
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_imageController.text.isNotEmpty) ...[
-                    Container(
-                      height: 180,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: theme.colorScheme.outlineVariant),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Image.network(
-                        _imageController.text,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Center(
-                          child: Icon(Icons.broken_image_outlined, size: 48),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _imageController,
-                          decoration: const InputDecoration(
-                            labelText: 'Đường dẫn ảnh sự kiện (URL)',
-                            border: OutlineInputBorder(),
-                            hintText: 'https://...',
-                          ),
-                          onChanged: (_) => setState(() {}),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        onPressed: _isUploadingImage ? null : _pickAndUploadImage,
-                        icon: _isUploadingImage
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.image_search_outlined),
-                        label: const Text('Chọn ảnh'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
               TextFormField(
                 controller: _capacityController,
                 keyboardType: TextInputType.number,
@@ -327,7 +231,8 @@ class _AdminEventFormScreenState extends ConsumerState<AdminEventFormScreen> {
               ),
               const SizedBox(height: 20),
               DropdownButtonFormField<EventStatus>(
-                value: _status,
+                key: ValueKey(_status),
+                initialValue: _status,
                 decoration: const InputDecoration(
                   labelText: 'Trạng thái sự kiện',
                   border: OutlineInputBorder(),

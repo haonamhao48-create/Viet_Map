@@ -67,34 +67,34 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ListTile(
                       leading: const Icon(Icons.school_outlined),
                       title: const Text('Danh mục trường học'),
-                      onTap: () {
+                      onTap: () async {
                         Navigator.pop(context);
-                        context.push('/schools');
+                        await context.push('/schools');
                       },
                     ),
                     ListTile(
                       leading: const Icon(Icons.campaign_outlined),
                       title: const Text('Chiến dịch tuyển sinh'),
-                      onTap: () {
+                      onTap: () async {
                         Navigator.pop(context);
-                        context.push('/campaigns');
+                        await context.push('/campaigns');
                       },
                     ),
                     ListTile(
                       leading: const Icon(Icons.event_note_outlined),
                       title: const Text('Sự kiện tuyển sinh của tôi'),
-                      onTap: () {
+                      onTap: () async {
                         Navigator.pop(context);
-                        context.push('/my-events');
+                        await context.push('/my-events');
                       },
                     ),
                     const Divider(),
                     ListTile(
                       leading: const Icon(Icons.person_outline),
                       title: const Text('Hồ sơ cá nhân'),
-                      onTap: () {
+                      onTap: () async {
                         Navigator.pop(context);
-                        context.push('/profile');
+                        await context.push('/profile');
                       },
                     ),
                   ],
@@ -398,7 +398,9 @@ class _MobileSearchBarState extends ConsumerState<_MobileSearchBar> {
                   )
                 else if (authUser != null)
                   GestureDetector(
-                    onTap: () => context.push('/profile'),
+                    onTap: () async {
+                      await context.push('/profile');
+                    },
                     child: Padding(
                       padding: const EdgeInsets.only(right: 8.0),
                       child: CircleAvatar(

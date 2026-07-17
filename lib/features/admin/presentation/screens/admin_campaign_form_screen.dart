@@ -1,6 +1,3 @@
-import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,14 +21,12 @@ class _AdminCampaignFormScreenState extends ConsumerState<AdminCampaignFormScree
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
-  final _bannerController = TextEditingController();
   
   CampaignStatus _status = CampaignStatus.draft;
   DateTime? _startDate;
   DateTime? _endDate;
   bool _isEdit = false;
   bool _isLoadingData = false;
-  bool _isUploadingImage = false;
 
   @override
   void initState() {
@@ -48,7 +43,6 @@ class _AdminCampaignFormScreenState extends ConsumerState<AdminCampaignFormScree
     if (campaign != null) {
       _titleController.text = campaign.title;
       _descController.text = campaign.description;
-      _bannerController.text = campaign.bannerUrl;
       setState(() {
         _status = campaign.status;
         _startDate = campaign.startDate;
@@ -58,42 +52,10 @@ class _AdminCampaignFormScreenState extends ConsumerState<AdminCampaignFormScree
     setState(() => _isLoadingData = false);
   }
 
-  Future<void> _pickAndUploadImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    
-    if (pickedFile != null) {
-      setState(() => _isUploadingImage = true);
-      try {
-        final file = File(pickedFile.path);
-        final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final storageRef = FirebaseStorage.instance.ref().child('campaigns').child(fileName);
-        
-        await storageRef.putFile(file);
-        final downloadUrl = await storageRef.getDownloadURL();
-        
-        setState(() {
-          _bannerController.text = downloadUrl;
-        });
-        
-        if (mounted) {
-          TopNotification.show(context, 'Tải ảnh lên thành công!');
-        }
-      } catch (e) {
-        if (mounted) {
-          TopNotification.show(context, 'Lỗi tải ảnh: $e', isError: true);
-        }
-      } finally {
-        setState(() => _isUploadingImage = false);
-      }
-    }
-  }
-
   @override
   void dispose() {
     _titleController.dispose();
     _descController.dispose();
-    _bannerController.dispose();
     super.dispose();
   }
 
@@ -138,7 +100,7 @@ class _AdminCampaignFormScreenState extends ConsumerState<AdminCampaignFormScree
       id: widget.campaignId ?? '',
       title: _titleController.text.trim(),
       description: _descController.text.trim(),
-      bannerUrl: _bannerController.text.trim(),
+      bannerUrl: '',
       status: _status,
       startDate: _startDate,
       endDate: _endDate,
@@ -208,66 +170,9 @@ class _AdminCampaignFormScreenState extends ConsumerState<AdminCampaignFormScree
                     val == null || val.trim().isEmpty ? 'Vui lòng nhập mô tả' : null,
               ),
               const SizedBox(height: 20),
-              // Image picker and preview
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_bannerController.text.isNotEmpty) ...[
-                    Container(
-                      height: 180,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: theme.colorScheme.outlineVariant),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Image.network(
-                        _bannerController.text,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Center(
-                          child: Icon(Icons.broken_image_outlined, size: 48),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _bannerController,
-                          decoration: const InputDecoration(
-                            labelText: 'Đường dẫn ảnh banner (URL)',
-                            border: OutlineInputBorder(),
-                            hintText: 'https://...',
-                          ),
-                          onChanged: (_) => setState(() {}), // refresh preview
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        onPressed: _isUploadingImage ? null : _pickAndUploadImage,
-                        icon: _isUploadingImage
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.image_search_outlined),
-                        label: const Text('Chọn ảnh'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
               DropdownButtonFormField<CampaignStatus>(
-                value: _status,
+                key: ValueKey(_status),
+                initialValue: _status,
                 decoration: const InputDecoration(
                   labelText: 'Trạng thái chiến dịch',
                   border: OutlineInputBorder(),

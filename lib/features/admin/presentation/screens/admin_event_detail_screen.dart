@@ -109,7 +109,9 @@ class AdminEventDetailScreen extends ConsumerWidget {
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        onPressed: () => context.push('/admin/events/${event.id}/edit'),
+                        onPressed: () async {
+                          await context.push('/admin/events/${event.id}/edit');
+                        },
                         icon: const Icon(Icons.edit_outlined),
                         label: const Text('Chỉnh sửa'),
                       ),
@@ -124,7 +126,9 @@ class AdminEventDetailScreen extends ConsumerWidget {
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        onPressed: () => context.push('/admin/events/${event.id}/participants'),
+                        onPressed: () async {
+                          await context.push('/admin/events/${event.id}/participants');
+                        },
                         icon: const Icon(Icons.people_alt_outlined),
                         label: const Text('Danh sách đăng ký'),
                       ),
