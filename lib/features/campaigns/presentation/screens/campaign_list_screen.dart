@@ -43,7 +43,9 @@ class _CampaignListScreenState extends ConsumerState<CampaignListScreen> {
         actions: [
           IconButton(
             tooltip: 'Sự kiện của tôi',
-            onPressed: () => context.push('/my-events'),
+            onPressed: () async {
+              await context.push('/my-events');
+            },
             icon: const Icon(Icons.event_note_outlined),
           ),
         ],
@@ -97,7 +99,9 @@ class _CampaignListScreenState extends ConsumerState<CampaignListScreen> {
                       final campaign = campaigns[index];
                       return CampaignCard(
                         campaign: campaign,
-                        onTap: () => context.push('/campaigns/${campaign.id}'),
+                        onTap: () async {
+                          await context.push('/campaigns/${campaign.id}');
+                        },
                       );
                     },
                   ),
@@ -108,7 +112,9 @@ class _CampaignListScreenState extends ConsumerState<CampaignListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/my-events'),
+        onPressed: () async {
+          await context.push('/my-events');
+        },
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.event_available_outlined),

@@ -30,7 +30,9 @@ class MapAppBarUserActions extends ConsumerWidget {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(24),
-            onTap: () => context.push('/profile'),
+            onTap: () async {
+              await context.push('/profile');
+            },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: Row(
@@ -122,7 +124,7 @@ class UserAccountHeader extends ConsumerWidget {
                     );
                   }
 
-                  router.push('/profile');
+                  await router.push('/profile');
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),

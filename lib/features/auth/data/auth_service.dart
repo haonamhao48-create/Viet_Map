@@ -189,14 +189,31 @@ class AuthService {
     return account;
   }
 
+  static const _adminEmails = {
+    'dbchan1624@gmail.com',
+    'namtt4304@gmail.com',
+  };
+
+  bool _isAdminEmail(String? email) {
+    if (email == null) return false;
+    return _adminEmails.contains(email.trim().toLowerCase());
+  }
+
+  String _resolveRole(String? email, {String? existingRole}) {
+    final normalized = existingRole?.trim().toLowerCase();
+    if (normalized == 'admin' || normalized == 'user') {
+      return normalized!;
+    }
+    return _isAdminEmail(email) ? 'admin' : 'user';
+  }
+
   Future<void> _saveUserToFirestore(User? user) async {
     if (user == null) return;
 
     final userRef = _firestore.collection('users').doc(user.uid);
     final snapshot = await userRef.get();
-
-    final isAdminEmail = user.email == 'dbchan1624@gmail.com';
-    final resolvedRole = isAdminEmail ? 'admin' : 'user';
+    final existingRole = snapshot.data()?['role'] as String?;
+    final resolvedRole = _resolveRole(user.email, existingRole: existingRole);
 
     final commonData = <String, dynamic>{
       'uid': user.uid,
@@ -217,9 +234,9 @@ class AuthService {
       return;
     }
 
+    // Không ghi đè role khi đăng nhập lại — giữ admin/user đã có trên Firestore.
     await userRef.update({
       'email': user.email,
-      'role': resolvedRole, // Force role validation on login
       'lastLoginAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });

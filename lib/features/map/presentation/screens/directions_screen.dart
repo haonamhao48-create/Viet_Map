@@ -171,7 +171,7 @@ class DirectionsScreen extends ConsumerWidget {
                         ),
                       ),
                       onPressed: () {
-                        context.go('/home'); // Go directly to Map tab to show the path!
+                        context.go('/home');
                       },
                       icon: const Icon(Icons.map_outlined),
                       label: const Text('Xem lộ trình trên bản đồ'),

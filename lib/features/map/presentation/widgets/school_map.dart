@@ -100,7 +100,6 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
   late final MapController _mapController;
   static const LatLng _vietnamCenter = LatLng(15.8, 108.0);
   static const double _defaultZoom = 6.0;
-  bool _isLoadingBoundaries = false;
   final FirebaseStorage _firebaseStorage = FirebaseStorage.instance;
 
   LatLngBounds? _visibleBounds;
@@ -148,12 +147,6 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
   }
 
   Future<void> _loadAllBoundaries() async {
-    if (mounted) {
-      setState(() {
-        _isLoadingBoundaries = true;
-      });
-    }
-
     _provinceBoundaries.clear();
 
     try {
@@ -222,12 +215,6 @@ class _SchoolMapState extends ConsumerState<SchoolMap> {
         '[GEOJSON] Lỗi tải ranh giới địa phận: '
             '$error\n$stackTrace',
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingBoundaries = false;
-        });
-      }
     }
   }
 

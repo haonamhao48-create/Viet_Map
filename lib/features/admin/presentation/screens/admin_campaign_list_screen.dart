@@ -35,7 +35,9 @@ class AdminCampaignListScreen extends ConsumerWidget {
                   const Text('Chưa có chiến dịch nào.'),
                   const SizedBox(height: 16),
                   FilledButton.icon(
-                    onPressed: () => context.push('/admin/campaigns/new'),
+                    onPressed: () async {
+                      await context.push('/admin/campaigns/new');
+                    },
                     icon: const Icon(Icons.add),
                     label: const Text('Tạo chiến dịch mới'),
                     style: FilledButton.styleFrom(
@@ -100,12 +102,16 @@ class AdminCampaignListScreen extends ConsumerWidget {
                       IconButton(
                         icon: const Icon(Icons.list_alt_rounded),
                         tooltip: 'Xem sự kiện',
-                        onPressed: () => context.push('/admin/campaigns/${campaign.id}/events'),
+                        onPressed: () async {
+                          await context.push('/admin/campaigns/${campaign.id}/events');
+                        },
                       ),
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),
                         tooltip: 'Chỉnh sửa',
-                        onPressed: () => context.push('/admin/campaigns/${campaign.id}/edit'),
+                        onPressed: () async {
+                          await context.push('/admin/campaigns/${campaign.id}/edit');
+                        },
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -158,7 +164,9 @@ class AdminCampaignListScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: const Color(0xFF0F766E),
         foregroundColor: Colors.white,
-        onPressed: () => context.push('/admin/campaigns/new'),
+        onPressed: () async {
+          await context.push('/admin/campaigns/new');
+        },
         icon: const Icon(Icons.add),
         label: const Text('Thêm chiến dịch'),
       ),
