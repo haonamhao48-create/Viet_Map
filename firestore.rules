@@ -99,5 +99,10 @@ service cloud.firestore {
 
       allow delete: if isAdmin();
     }
+
+    match /notification_requests/{requestId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
   }
 }

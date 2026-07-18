@@ -88,6 +88,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         await context.push('/my-events');
                       },
                     ),
+                    ListTile(
+                      leading: const Icon(Icons.notifications_none_outlined),
+                      title: const Text('Thông báo từ hệ thống'),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        await context.push('/notifications');
+                      },
+                    ),
                     const Divider(),
                     ListTile(
                       leading: const Icon(Icons.person_outline),
@@ -396,30 +404,38 @@ class _MobileSearchBarState extends ConsumerState<_MobileSearchBar> {
                       ref.read(schoolSearchQueryProvider.notifier).state = '';
                     },
                   )
-                else if (authUser != null)
-                  GestureDetector(
-                    onTap: () async {
-                      await context.push('/profile');
+                else ...[
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none_outlined, color: Colors.grey),
+                    onPressed: () async {
+                      await context.push('/notifications');
                     },
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: const Color(0xFF0F766E).withValues(alpha: 0.1),
-                        backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-                        child: avatarUrl == null
-                            ? Text(
-                                displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0F766E),
-                                  fontSize: 12,
-                                ),
-                              )
-                            : null,
+                  ),
+                  if (authUser != null)
+                    GestureDetector(
+                      onTap: () async {
+                        await context.push('/profile');
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: CircleAvatar(
+                          radius: 16,
+                          backgroundColor: const Color(0xFF0F766E).withValues(alpha: 0.1),
+                          backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                          child: avatarUrl == null
+                              ? Text(
+                                  displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0F766E),
+                                    fontSize: 12,
+                                  ),
+                                )
+                              : null,
+                        ),
                       ),
                     ),
-                  ),
+                ],
               ],
             ),
           ),

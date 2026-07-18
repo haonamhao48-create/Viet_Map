@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/campaign_firestore_datasource.dart';
@@ -464,7 +466,7 @@ class UserCheckInController extends StateNotifier<AsyncValue<void>> {
 
   final Ref ref;
 
-  Future<bool> checkIn(String eventId) async {
+  Future<bool> checkIn(String eventId, XFile imageFile) async {
     final user = ref.read(authStateProvider).valueOrNull;
     if (user == null) {
       state = AsyncError('Bạn cần đăng nhập.', StackTrace.current);
@@ -473,7 +475,22 @@ class UserCheckInController extends StateNotifier<AsyncValue<void>> {
 
     state = const AsyncLoading();
     try {
-      await ref.read(participationRepositoryProvider).checkIn(eventId, user.uid);
+      // 1. Tải ảnh bằng chứng lên Firebase Storage
+      final bytes = await imageFile.readAsBytes();
+      final extension = imageFile.name.split('.').last;
+      final storageRef = FirebaseStorage.instance.ref().child(
+          'users/${user.uid}/evidence_${eventId}_\${DateTime.now().millisecondsSinceEpoch}.$extension');
+
+      await storageRef.putData(
+        bytes,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+      final downloadUrl = await storageRef.getDownloadURL();
+
+      // 2. Thực hiện check-in với link ảnh bằng chứng
+      await ref
+          .read(participationRepositoryProvider)
+          .checkIn(eventId, user.uid, downloadUrl);
       state = const AsyncData(null);
       ref.invalidate(eventParticipationProvider(eventId));
       ref.invalidate(myEventsWithDetailsProvider);

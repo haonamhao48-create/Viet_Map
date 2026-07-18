@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../../core/services/notification_service.dart';
 import '../core/firebase_auth_config.dart';
 import '../data/models/app_user_model.dart';
 
@@ -231,6 +232,7 @@ class AuthService {
         'role': resolvedRole,
         'createdAt': FieldValue.serverTimestamp(),
       });
+      await NotificationService.saveTokenToFirestore(user.uid);
       return;
     }
 
@@ -240,6 +242,7 @@ class AuthService {
       'lastLoginAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    await NotificationService.saveTokenToFirestore(user.uid);
   }
 
   Future<void> signOut() async {
