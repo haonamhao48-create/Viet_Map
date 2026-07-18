@@ -128,13 +128,9 @@ class NotificationListScreen extends ConsumerWidget {
                             ),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
-                          onPressed: () {
-                            Navigator.pop(context); // Close bottom sheet
-                            try {
-                              context.push(route); // Navigate to target
-                            } catch (e) {
-                              debugPrint('Lỗi điều hướng deep link: $e');
-                            }
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            await context.push(route);
                           },
                           child: const Text('XEM CHI TIẾT', style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
@@ -175,7 +171,7 @@ class NotificationListScreen extends ConsumerWidget {
         backgroundColor: const Color(0xFF0F766E),
         foregroundColor: Colors.white,
       ),
-      body: StreamBuilder<QuerySnapshot>(
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
             .collection('notification_requests')
             .where('status', isEqualTo: 'sent')
@@ -201,8 +197,8 @@ class NotificationListScreen extends ConsumerWidget {
           // Sắp xếp phía client để không phụ thuộc composite index
           final docs = (snapshot.data?.docs ?? [])
             ..sort((a, b) {
-              final aData = a.data() as Map<String, dynamic>;
-              final bData = b.data() as Map<String, dynamic>;
+              final aData = a.data();
+              final bData = b.data();
               final aTime = (aData['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
               final bTime = (bData['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
               return bTime.compareTo(aTime); // Mới nhất lên trên
@@ -235,7 +231,7 @@ class NotificationListScreen extends ConsumerWidget {
             itemCount: docs.length,
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final data = docs[index].data() as Map<String, dynamic>;
+              final data = docs[index].data();
               final title = data['title'] as String? ?? 'Thông báo';
               final body = data['body'] as String? ?? '';
               final route = data['route'] as String? ?? '';
