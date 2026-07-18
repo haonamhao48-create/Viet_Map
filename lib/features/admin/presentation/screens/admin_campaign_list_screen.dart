@@ -50,7 +50,7 @@ class AdminCampaignListScreen extends ConsumerWidget {
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
             itemCount: campaigns.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
@@ -60,99 +60,100 @@ class AdminCampaignListScreen extends ConsumerWidget {
                   border: Border.all(color: theme.colorScheme.outlineVariant),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  title: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          campaign.title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      CampaignStatusChip(status: campaign.status),
-                    ],
-                  ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Column(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          campaign.description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                        Expanded(
+                          child: Text(
+                            campaign.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Thời gian: ${formatEventDateRange(campaign.startDate, campaign.endDate)}',
-                          style: theme.textTheme.bodySmall,
+                        const SizedBox(width: 8),
+                        CampaignStatusChip(status: campaign.status),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      campaign.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Thời gian: ${formatEventDateRange(campaign.startDate, campaign.endDate)}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.list_alt_rounded),
+                          tooltip: 'Xem sự kiện',
+                          onPressed: () async {
+                            await context.push('/admin/campaigns/${campaign.id}/events');
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined),
+                          tooltip: 'Chỉnh sửa',
+                          onPressed: () async {
+                            await context.push('/admin/campaigns/${campaign.id}/edit');
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          tooltip: 'Xóa',
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Xóa chiến dịch'),
+                                content: const Text(
+                                  'Bạn có chắc chắn muốn xóa chiến dịch này không? '
+                                  'Hành động này không thể hoàn tác.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('Hủy'),
+                                  ),
+                                  FilledButton(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                    ),
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: const Text('Xóa'),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirm == true) {
+                              await ref
+                                  .read(adminCampaignControllerProvider.notifier)
+                                  .delete(campaign.id);
+                              if (context.mounted) {
+                                TopNotification.show(context, 'Đã xóa chiến dịch thành công.');
+                              }
+                            }
+                          },
                         ),
                       ],
                     ),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.list_alt_rounded),
-                        tooltip: 'Xem sự kiện',
-                        onPressed: () async {
-                          await context.push('/admin/campaigns/${campaign.id}/events');
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined),
-                        tooltip: 'Chỉnh sửa',
-                        onPressed: () async {
-                          await context.push('/admin/campaigns/${campaign.id}/edit');
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
-                        tooltip: 'Xóa',
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Xóa chiến dịch'),
-                              content: const Text(
-                                'Bạn có chắc chắn muốn xóa chiến dịch này không? '
-                                'Hành động này không thể hoàn tác.',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
-                                  child: const Text('Hủy'),
-                                ),
-                                FilledButton(
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: Colors.red,
-                                  ),
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text('Xóa'),
-                                ),
-                              ],
-                            ),
-                          );
-
-                          if (confirm == true) {
-                            await ref
-                                .read(adminCampaignControllerProvider.notifier)
-                                .delete(campaign.id);
-                            if (context.mounted) {
-                              TopNotification.show(context, 'Đã xóa chiến dịch thành công.');
-                            }
-                          }
-                        },
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
               );
             },

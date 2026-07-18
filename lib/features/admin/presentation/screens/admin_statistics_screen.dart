@@ -1,6 +1,9 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../app/widgets/top_notification.dart';
 
 import '../../../campaigns/data/models/event_participation_model.dart';
 import '../../../campaigns/presentation/providers/campaign_provider.dart';
@@ -14,6 +17,19 @@ class AdminStatisticsScreen extends ConsumerStatefulWidget {
 
 class _AdminStatisticsScreenState extends ConsumerState<AdminStatisticsScreen> {
   String _selectedEventId = 'all';
+
+  Future<void> _openParticipantsTab(int tabIndex) async {
+    if (_selectedEventId == 'all') {
+      TopNotification.show(
+        context,
+        'Vui lòng chọn một sự kiện cụ thể để xem danh sách đăng ký.',
+        isError: true,
+      );
+      return;
+    }
+
+    await context.push('/admin/events/$_selectedEventId/participants?tab=$tabIndex');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -253,7 +269,7 @@ class _AdminStatisticsScreenState extends ConsumerState<AdminStatisticsScreen> {
                   : events.firstWhere((e) => e.id == _selectedEventId);
 
               return SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -267,7 +283,9 @@ class _AdminStatisticsScreenState extends ConsumerState<AdminStatisticsScreen> {
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: DropdownButtonFormField<String>(
+                          key: ValueKey(_selectedEventId),
                           initialValue: _selectedEventId,
+                          isExpanded: true,
                           decoration: InputDecoration(
                             labelText: 'Chọn sự kiện để xem thống kê',
                             labelStyle: TextStyle(
@@ -286,12 +304,22 @@ class _AdminStatisticsScreenState extends ConsumerState<AdminStatisticsScreen> {
                           items: [
                             const DropdownMenuItem<String>(
                               value: 'all',
-                              child: Text('Tất cả các sự kiện (Toàn hệ thống)'),
+                              child: Text(
+                                'Tất cả các sự kiện (Toàn hệ thống)',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            ...events.map((e) => DropdownMenuItem<String>(
-                                  value: e.id,
-                                  child: Text(e.title),
-                                )),
+                            ...events.map(
+                              (e) => DropdownMenuItem<String>(
+                                value: e.id,
+                                child: Text(
+                                  e.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
                           ],
                           onChanged: (val) {
                             setState(() {
@@ -383,6 +411,7 @@ class _AdminStatisticsScreenState extends ConsumerState<AdminStatisticsScreen> {
                               label: 'Tổng số đăng ký',
                               value: total.toString(),
                               color: const Color(0xFF0F766E),
+                              onTap: () => _openParticipantsTab(0),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -391,6 +420,7 @@ class _AdminStatisticsScreenState extends ConsumerState<AdminStatisticsScreen> {
                               label: 'Đã tham dự',
                               value: attendedCount.toString(),
                               color: Colors.green,
+                              onTap: () => _openParticipantsTab(2),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -399,6 +429,7 @@ class _AdminStatisticsScreenState extends ConsumerState<AdminStatisticsScreen> {
                               label: 'Vắng mặt',
                               value: absentCount.toString(),
                               color: Colors.orange,
+                              onTap: () => _openParticipantsTab(3),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -407,6 +438,7 @@ class _AdminStatisticsScreenState extends ConsumerState<AdminStatisticsScreen> {
                               label: 'Đã hủy',
                               value: cancelledCount.toString(),
                               color: Colors.red,
+                              onTap: () => _openParticipantsTab(4),
                             ),
                           ),
                         ],
@@ -421,6 +453,7 @@ class _AdminStatisticsScreenState extends ConsumerState<AdminStatisticsScreen> {
                                   label: 'Tổng số đăng ký',
                                   value: total.toString(),
                                   color: const Color(0xFF0F766E),
+                                  onTap: () => _openParticipantsTab(0),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -429,6 +462,7 @@ class _AdminStatisticsScreenState extends ConsumerState<AdminStatisticsScreen> {
                                   label: 'Đã tham dự',
                                   value: attendedCount.toString(),
                                   color: Colors.green,
+                                  onTap: () => _openParticipantsTab(2),
                                 ),
                               ),
                             ],
@@ -441,6 +475,7 @@ class _AdminStatisticsScreenState extends ConsumerState<AdminStatisticsScreen> {
                                   label: 'Vắng mặt',
                                   value: absentCount.toString(),
                                   color: Colors.orange,
+                                  onTap: () => _openParticipantsTab(3),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -449,6 +484,7 @@ class _AdminStatisticsScreenState extends ConsumerState<AdminStatisticsScreen> {
                                   label: 'Đã hủy',
                                   value: cancelledCount.toString(),
                                   color: Colors.red,
+                                  onTap: () => _openParticipantsTab(4),
                                 ),
                               ),
                             ],
@@ -499,40 +535,49 @@ class _StatBox extends StatelessWidget {
     required this.label,
     required this.value,
     required this.color,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border.all(color: theme.colorScheme.outlineVariant),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+            borderRadius: BorderRadius.circular(4),
           ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: color,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
