@@ -29,6 +29,12 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        testInstrumentationRunner = "pl.leancode.patrol.PatrolJUnitRunner"
+        testInstrumentationRunnerArguments["clearPackageData"] = "true"
+    }
+
+    testOptions {
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
     }
 
     buildTypes {
@@ -45,4 +51,5 @@ flutter {
 
 dependencies {
     implementation("com.google.android.gms:play-services-auth:21.3.0")
+    androidTestUtil("androidx.test:orchestrator:1.5.1")
 }

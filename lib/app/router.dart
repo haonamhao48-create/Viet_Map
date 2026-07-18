@@ -246,8 +246,13 @@ final appRouter = GoRouter(
       path: '/admin/events/:id/participants',
       builder: (context, state) {
         final id = state.pathParameters['id'];
+        final tabParam = state.uri.queryParameters['tab'];
+        final initialTabIndex = int.tryParse(tabParam ?? '') ?? 0;
         return AdminRoleGate(
-          child: AdminParticipantsScreen(eventId: id ?? ''),
+          child: AdminParticipantsScreen(
+            eventId: id ?? '',
+            initialTabIndex: initialTabIndex.clamp(0, 4),
+          ),
         );
       },
     ),

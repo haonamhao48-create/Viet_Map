@@ -57,36 +57,45 @@ class AdminEventListScreen extends ConsumerWidget {
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
             itemCount: events.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final event = events[index];
-              return Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: theme.colorScheme.outlineVariant),
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
                   borderRadius: BorderRadius.circular(8),
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  title: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          event.title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      EventStatusChip(status: event.status),
-                    ],
-                  ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
+                  onTap: () async {
+                    await context.push('/admin/events/${event.id}');
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: theme.colorScheme.outlineVariant),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                event.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            EventStatusChip(status: event.status),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
                         Text(
                           'Trường: ${event.schoolName}',
                           style: const TextStyle(fontWeight: FontWeight.w600),
@@ -104,69 +113,67 @@ class AdminEventListScreen extends ConsumerWidget {
                             color: event.isFull ? Colors.red : const Color(0xFF0F766E),
                           ),
                         ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.people_alt_outlined),
+                              tooltip: 'Danh sách đăng ký',
+                              onPressed: () async {
+                                await context.push('/admin/events/${event.id}/participants');
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined),
+                              tooltip: 'Chỉnh sửa',
+                              onPressed: () async {
+                                await context.push('/admin/events/${event.id}/edit');
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              tooltip: 'Xóa',
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Xóa sự kiện'),
+                                    content: const Text(
+                                      'Bạn có chắc chắn muốn xóa sự kiện này không? '
+                                      'Hành động này không thể hoàn tác.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, false),
+                                        child: const Text('Hủy'),
+                                      ),
+                                      FilledButton(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: Colors.red,
+                                        ),
+                                        onPressed: () => Navigator.pop(context, true),
+                                        child: const Text('Xóa'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirm == true) {
+                                  await ref
+                                      .read(adminEventControllerProvider.notifier)
+                                      .delete(event.id, campaignId);
+                                  if (context.mounted) {
+                                    TopNotification.show(context, 'Đã xóa sự kiện thành công.');
+                                  }
+                                }
+                              },
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.people_alt_outlined),
-                        tooltip: 'Danh sách đăng ký',
-                        onPressed: () async {
-                          await context.push('/admin/events/${event.id}/participants');
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined),
-                        tooltip: 'Chỉnh sửa',
-                        onPressed: () async {
-                          await context.push('/admin/events/${event.id}/edit');
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
-                        tooltip: 'Xóa',
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Xóa sự kiện'),
-                              content: const Text(
-                                'Bạn có chắc chắn muốn xóa sự kiện này không? '
-                                'Hành động này không thể hoàn tác.',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
-                                  child: const Text('Hủy'),
-                                ),
-                                FilledButton(
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: Colors.red,
-                                  ),
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text('Xóa'),
-                                ),
-                              ],
-                            ),
-                          );
-
-                          if (confirm == true) {
-                            await ref
-                                .read(adminEventControllerProvider.notifier)
-                                .delete(event.id, campaignId);
-                            if (context.mounted) {
-                              TopNotification.show(context, 'Đã xóa sự kiện thành công.');
-                            }
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                  onTap: () async {
-                    await context.push('/admin/events/${event.id}');
-                  },
                 ),
               );
             },

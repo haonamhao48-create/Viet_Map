@@ -8,9 +8,14 @@ import '../../../campaigns/presentation/widgets/status_chip.dart';
 import '../../../../shared/widgets/loading_indicator.dart';
 
 class AdminParticipantsScreen extends ConsumerStatefulWidget {
-  const AdminParticipantsScreen({super.key, required this.eventId});
+  const AdminParticipantsScreen({
+    super.key,
+    required this.eventId,
+    this.initialTabIndex = 0,
+  });
 
   final String eventId;
+  final int initialTabIndex;
 
   @override
   ConsumerState<AdminParticipantsScreen> createState() => _AdminParticipantsScreenState();
@@ -24,7 +29,12 @@ class _AdminParticipantsScreenState extends ConsumerState<AdminParticipantsScree
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
+    final initialIndex = widget.initialTabIndex.clamp(0, _tabs.length - 1);
+    _tabController = TabController(
+      length: _tabs.length,
+      vsync: this,
+      initialIndex: initialIndex,
+    );
   }
 
   @override
@@ -106,76 +116,81 @@ class _AdminParticipantsScreenState extends ConsumerState<AdminParticipantsScree
             borderRadius: BorderRadius.circular(8),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          item.userName,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                        ),
-                        const SizedBox(width: 12),
-                        ParticipationStatusChip(status: item.status),
-                      ],
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.userName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                     ),
-                    if (item.userEmail != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        item.userEmail!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                    if (item.registeredAt != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        'Đăng ký lúc: ${formatEventDate(item.registeredAt)}',
-                        style: theme.textTheme.labelSmall,
-                      ),
-                    ],
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 8),
+                  ParticipationStatusChip(status: item.status),
+                ],
               ),
+              if (item.userEmail != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  item.userEmail!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              if (item.registeredAt != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Đăng ký lúc: ${formatEventDate(item.registeredAt)}',
+                  style: theme.textTheme.labelSmall,
+                ),
+              ],
               if (item.status == ParticipationStatus.registered) ...[
+                const SizedBox(height: 12),
                 Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
+                        onPressed: isActionLoading
+                            ? null
+                            : () => ref
+                                .read(adminParticipationControllerProvider.notifier)
+                                .markAbsent(item.id, widget.eventId),
+                        icon: const Icon(Icons.close, size: 16),
+                        label: const Text('Vắng mặt'),
                       ),
-                      onPressed: isActionLoading
-                          ? null
-                          : () => ref
-                              .read(adminParticipationControllerProvider.notifier)
-                              .markAbsent(item.id, widget.eventId),
-                      icon: const Icon(Icons.close, size: 16),
-                      label: const Text('Vắng mặt'),
                     ),
                     const SizedBox(width: 8),
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F766E),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
+                    Expanded(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF0F766E),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
+                        onPressed: isActionLoading
+                            ? null
+                            : () => ref
+                                .read(adminParticipationControllerProvider.notifier)
+                                .confirm(item.id, widget.eventId),
+                        icon: const Icon(Icons.check, size: 16),
+                        label: const Text('Tham dự'),
                       ),
-                      onPressed: isActionLoading
-                          ? null
-                          : () => ref
-                              .read(adminParticipationControllerProvider.notifier)
-                              .confirm(item.id, widget.eventId),
-                      icon: const Icon(Icons.check, size: 16),
-                      label: const Text('Tham dự'),
                     ),
                   ],
                 ),
