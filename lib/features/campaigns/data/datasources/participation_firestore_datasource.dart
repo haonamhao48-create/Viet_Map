@@ -229,7 +229,7 @@ class ParticipationFirestoreDataSource {
         });
   }
 
-  Future<void> checkIn(String eventId, String userId) async {
+  Future<void> checkIn(String eventId, String userId, String evidenceUrl) async {
     final docId = participationDocId(eventId, userId);
     final docRef = _firestore.collection('event_participations').doc(docId);
 
@@ -256,6 +256,7 @@ class ParticipationFirestoreDataSource {
 
       transaction.update(docRef, {
         'status': ParticipationStatus.attended.firestoreValue,
+        'evidence_url': evidenceUrl,
         'updated_at': FieldValue.serverTimestamp(),
       });
     });
