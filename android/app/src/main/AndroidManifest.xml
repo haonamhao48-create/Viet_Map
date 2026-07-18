@@ -6,7 +6,7 @@
         android:maxSdkVersion="32" />
 
     <application
-        android:label="vn_map_app"
+        android:label="Việt Map"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -35,6 +35,15 @@ dev_dependencies:
   patrol: ^4.7.1
   integration_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#0F766E"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"
 
 flutter:
   uses-material-design: true
@@ -51,3 +60,4 @@ patrol:
     bundle_id: com.example.vnMapApp
   macos:
     bundle_id: com.example.vnMapApp
+    - assets/icon/
