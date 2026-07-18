@@ -50,6 +50,7 @@ flutter:
 
   assets:
     - assets/config/env
+    - assets/icon/
 
 patrol:
   app_name: VietMap
@@ -60,4 +61,3 @@ patrol:
     bundle_id: com.example.vnMapApp
   macos:
     bundle_id: com.example.vnMapApp
-    - assets/icon/
