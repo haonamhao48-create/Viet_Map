@@ -519,6 +519,260 @@ class _AdminStatisticsScreenState extends ConsumerState<AdminStatisticsScreen> {
                           child: pieChartContainer,
                         ),
                       ),
+
+                    // ── Danh sách người đăng ký ──────────────────────────
+                    if (_selectedEventId != 'all' && filteredParticipations.isNotEmpty) ...[
+                      const SizedBox(height: 32),
+                      Row(
+                        children: [
+                          Text(
+                            'DANH SÁCH NGƯỜI ĐĂNG KÝ',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF0F766E),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0F766E),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${filteredParticipations.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: theme.colorScheme.outlineVariant),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Column(
+                          children: [
+                            // Header row
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0F766E), // nền xanh đậm — chữ trắng rõ
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                                border: Border(
+                                  bottom: BorderSide(color: theme.colorScheme.outlineVariant),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const SizedBox(width: 28),
+                                  Expanded(
+                                    flex: 3,
+                                    child: Text('HỌ VÀ TÊN', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
+                                  ),
+                                  Expanded(
+                                    flex: 3,
+                                    child: Text('EMAIL', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text('TRẠNG THÁI', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
+                                  ),
+                                  if (isDesktop)
+                                    Expanded(
+                                      flex: 2,
+                                      child: Text('NGÀY ĐĂNG KÝ', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            // Data rows
+                            ...filteredParticipations.asMap().entries.map((entry) {
+                              final idx = entry.key;
+                              final p = entry.value;
+                              final isLast = idx == filteredParticipations.length - 1;
+
+                              Color statusColor;
+                              switch (p.status) {
+                                case ParticipationStatus.attended:
+                                  statusColor = Colors.green;
+                                  break;
+                                case ParticipationStatus.cancelled:
+                                  statusColor = Colors.red;
+                                  break;
+                                case ParticipationStatus.absent:
+                                  statusColor = Colors.orange;
+                                  break;
+                                default:
+                                  statusColor = const Color(0xFF0F766E);
+                              }
+
+                              final regDate = p.registeredAt;
+                              final dateStr = regDate != null
+                                  ? '${regDate.day.toString().padLeft(2, '0')}/'
+                                    '${regDate.month.toString().padLeft(2, '0')}/'
+                                    '${regDate.year}'
+                                  : '—';
+
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: idx.isOdd ? const Color(0xFFF5F5F5) : Colors.white,
+                                  border: isLast
+                                      ? null
+                                      : Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Avatar
+                                    CircleAvatar(
+                                      radius: 14,
+                                      backgroundColor: statusColor.withValues(alpha: 0.15),
+                                      child: Text(
+                                        p.userName.isNotEmpty ? p.userName[0].toUpperCase() : '?',
+                                        style: TextStyle(
+                                          color: statusColor,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      flex: 3,
+                                      child: Text(
+                                        p.userName,
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black87,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 3,
+                                      child: Text(
+                                        p.userEmail ?? '—',
+                                        style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Flexible(
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: statusColor.withValues(alpha: 0.1),
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                                              ),
+                                              child: Text(
+                                                p.status.label,
+                                                style: TextStyle(
+                                                  color: statusColor,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ),
+                                          if (p.evidenceUrl != null && p.evidenceUrl!.isNotEmpty) ...[
+                                            const SizedBox(width: 6),
+                                            GestureDetector(
+                                              onTap: () {
+                                                showDialog(
+                                                  context: context,
+                                                  builder: (context) => Dialog(
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                                    clipBehavior: Clip.antiAlias,
+                                                    child: Column(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        AppBar(
+                                                          title: const Text('BẰNG CHỨNG CHECK-IN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                                          backgroundColor: const Color(0xFF0F766E),
+                                                          foregroundColor: Colors.white,
+                                                          automaticallyImplyLeading: false,
+                                                          actions: [
+                                                            IconButton(
+                                                              icon: const Icon(Icons.close),
+                                                              onPressed: () => Navigator.pop(context),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        Container(
+                                                          color: Colors.black,
+                                                          constraints: const BoxConstraints(maxHeight: 450),
+                                                          width: double.infinity,
+                                                          child: InteractiveViewer(
+                                                            maxScale: 3.0,
+                                                            child: Image.network(
+                                                              p.evidenceUrl!,
+                                                              fit: BoxFit.contain,
+                                                              loadingBuilder: (context, child, loadingProgress) {
+                                                                if (loadingProgress == null) return child;
+                                                                return const Center(
+                                                                  child: Padding(
+                                                                    padding: EdgeInsets.all(48.0),
+                                                                    child: CircularProgressIndicator(color: Colors.white),
+                                                                  ),
+                                                                );
+                                                              },
+                                                              errorBuilder: (context, error, stackTrace) {
+                                                                return const Center(
+                                                                  child: Padding(
+                                                                    padding: EdgeInsets.all(48.0),
+                                                                    child: Text(
+                                                                      'Không thể tải ảnh bằng chứng',
+                                                                      style: TextStyle(color: Colors.white70),
+                                                                    ),
+                                                                  ),
+                                                                );
+                                                              },
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                              child: const Icon(
+                                                Icons.image_search_rounded,
+                                                size: 20,
+                                                color: Color(0xFF0F766E),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    if (isDesktop)
+                                      Expanded(
+                                        flex: 2,
+                                        child: Text(
+                                          dateStr,
+                                          style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               );

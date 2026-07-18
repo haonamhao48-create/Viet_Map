@@ -46,6 +46,6 @@ class ParticipationRepository {
   Future<void> markAbsent(String participationId) =>
       _dataSource.markAbsent(participationId);
 
-  Future<void> checkIn(String eventId, String userId) =>
-      _dataSource.checkIn(eventId, userId);
+  Future<void> checkIn(String eventId, String userId, String evidenceUrl) =>
+      _dataSource.checkIn(eventId, userId, evidenceUrl);
 }

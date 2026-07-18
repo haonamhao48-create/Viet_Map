@@ -48,6 +48,7 @@ class EventParticipationModel {
     this.updatedAt,
     this.cancelledAt,
     this.event,
+    this.evidenceUrl,
   });
 
   final String id;
@@ -60,9 +61,11 @@ class EventParticipationModel {
   final DateTime? updatedAt;
   final DateTime? cancelledAt;
   final EventModel? event;
+  final String? evidenceUrl;
 
   EventParticipationModel copyWith({
     EventModel? event,
+    String? evidenceUrl,
   }) {
     return EventParticipationModel(
       id: id,
@@ -75,6 +78,7 @@ class EventParticipationModel {
       updatedAt: updatedAt,
       cancelledAt: cancelledAt,
       event: event ?? this.event,
+      evidenceUrl: evidenceUrl ?? this.evidenceUrl,
     );
   }
 
@@ -105,6 +109,7 @@ class EventParticipationModel {
         data['cancelled_at'] ?? data['cancelledAt'],
       ),
       event: event,
+      evidenceUrl: readFirestoreString(data, ['evidence_url', 'evidenceUrl']),
     );
   }
 

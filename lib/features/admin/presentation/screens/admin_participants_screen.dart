@@ -152,6 +152,92 @@ class _AdminParticipantsScreenState extends ConsumerState<AdminParticipantsScree
                   style: theme.textTheme.labelSmall,
                 ),
               ],
+              if (item.evidenceUrl != null && item.evidenceUrl!.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                InkWell(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => Dialog(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        clipBehavior: Clip.antiAlias,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AppBar(
+                              title: const Text('BẰNG CHỨNG CHECK-IN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              backgroundColor: const Color(0xFF0F766E),
+                              foregroundColor: Colors.white,
+                              automaticallyImplyLeading: false,
+                              actions: [
+                                IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              color: Colors.black,
+                              constraints: const BoxConstraints(maxHeight: 450),
+                              width: double.infinity,
+                              child: InteractiveViewer(
+                                maxScale: 3.0,
+                                child: Image.network(
+                                  item.evidenceUrl!,
+                                  fit: BoxFit.contain,
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return const Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(48.0),
+                                        child: CircularProgressIndicator(color: Colors.white),
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(48.0),
+                                        child: Text(
+                                          'Không thể tải ảnh bằng chứng',
+                                          style: TextStyle(color: Colors.white70),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F766E).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: const Color(0xFF0F766E).withValues(alpha: 0.2)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.image_search_rounded, size: 16, color: Color(0xFF0F766E)),
+                        SizedBox(width: 6),
+                        Text(
+                          'Xem ảnh bằng chứng check-in',
+                          style: TextStyle(
+                            color: Color(0xFF0F766E),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               if (item.status == ParticipationStatus.registered) ...[
                 const SizedBox(height: 12),
                 Row(

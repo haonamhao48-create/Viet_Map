@@ -10,10 +10,12 @@ import '../features/admin/presentation/screens/admin_event_form_screen.dart';
 import '../features/admin/presentation/screens/admin_event_list_screen.dart';
 import '../features/admin/presentation/screens/admin_participants_screen.dart';
 import '../features/admin/presentation/screens/admin_statistics_screen.dart';
+import '../features/admin/presentation/screens/admin_notification_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/profile_edit_screen.dart';
 import '../features/auth/presentation/utils/auth_navigation.dart';
 import '../features/auth/presentation/widgets/role_gate.dart';
+import '../features/notifications/presentation/screens/notification_list_screen.dart';
 import '../features/campaigns/presentation/screens/campaign_detail_screen.dart';
 import '../features/campaigns/presentation/screens/campaign_list_screen.dart';
 import '../features/campaigns/presentation/screens/event_detail_screen.dart';
@@ -95,6 +97,12 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
+          path: '/admin/notifications',
+          builder: (context, state) => const AdminRoleGate(
+            child: AdminNotificationScreen(),
+          ),
+        ),
+        GoRoute(
           path: '/admin/profile',
           builder: (context, state) => const AdminRoleGate(
             child: ProfileEditScreen(),
@@ -169,6 +177,12 @@ final appRouter = GoRouter(
           ),
         );
       },
+    ),
+    GoRoute(
+      path: '/notifications',
+      builder: (context, state) => const UserRoleGate(
+        child: NotificationListScreen(),
+      ),
     ),
     GoRoute(
       path: '/events/:id',

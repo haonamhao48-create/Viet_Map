@@ -1,7 +1,12 @@
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/widgets/top_notification.dart';
 import '../../../campaigns/data/models/campaign_model.dart';
 import '../../../campaigns/presentation/providers/campaign_provider.dart';
 import '../../../campaigns/presentation/widgets/status_chip.dart';
@@ -315,6 +320,13 @@ class _RecentCampaignsList extends StatelessWidget {
 }
 
 class _QuickActionsPanel extends StatelessWidget {
+  void _showFirebaseTestDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const _FirebaseTestDialog(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -361,8 +373,187 @@ class _QuickActionsPanel extends StatelessWidget {
             icon: const Icon(Icons.bar_chart_outlined),
             label: const Text('Xem thống kê chi tiết'),
           ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            onPressed: () async {
+              await context.push('/admin/notifications');
+            },
+            icon: const Icon(Icons.notification_important_outlined),
+            label: const Text('Gửi thông báo đẩy (FCM)'),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF0F766E),
+              side: const BorderSide(color: Color(0xFF0F766E)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            onPressed: () => _showFirebaseTestDialog(context),
+            icon: const Icon(Icons.bug_report_outlined),
+            label: const Text('Kiểm thử Crashlytics & FCM'),
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _FirebaseTestDialog extends StatefulWidget {
+  const _FirebaseTestDialog();
+
+  @override
+  State<_FirebaseTestDialog> createState() => _FirebaseTestDialogState();
+}
+
+class _FirebaseTestDialogState extends State<_FirebaseTestDialog> {
+  String _fcmToken = 'Đang tải...';
+  bool _isFCMSupported = false;
+  bool _isCrashlyticsSupported = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSupportAndLoadToken();
+  }
+
+  Future<void> _checkSupportAndLoadToken() async {
+    final isMobileOrMac = !kIsWeb && (
+        defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS
+    );
+    final isWebPlatform = kIsWeb;
+
+    setState(() {
+      _isFCMSupported = isMobileOrMac || isWebPlatform;
+      _isCrashlyticsSupported = isMobileOrMac;
+    });
+
+    if (_isFCMSupported) {
+      try {
+        final token = await FirebaseMessaging.instance.getToken();
+        setState(() {
+          _fcmToken = token ?? 'Không lấy được Token.';
+        });
+      } catch (e) {
+        setState(() {
+          _fcmToken = 'Lỗi lấy Token: $e';
+        });
+      }
+    } else {
+      setState(() {
+        _fcmToken = 'FCM không hỗ trợ trên nền tảng này.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text(
+        'KIỂM THỬ FIREBASE',
+        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Thiết bị FCM Token:',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+            const SizedBox(height: 6),
+            SelectableText(
+              _fcmToken,
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (_isFCMSupported && _fcmToken != 'Đang tải...' && !_fcmToken.startsWith('Không') && !_fcmToken.startsWith('Lỗi'))
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: _fcmToken));
+                    Navigator.pop(context);
+                    TopNotification.show(context, 'Đã sao chép FCM Token vào bộ nhớ tạm.');
+                  },
+                  icon: const Icon(Icons.copy, size: 16),
+                  label: const Text('Sao chép FCM Token'),
+                ),
+              ),
+            const Divider(height: 24),
+            const Text(
+              'Kiểm thử Crashlytics:',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            if (_isCrashlyticsSupported) ...[
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F766E),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
+                  onPressed: () async {
+                    try {
+                      throw Exception('Kiểm thử lỗi non-fatal Crashlytics từ Admin Dashboard');
+                    } catch (e, stack) {
+                      await FirebaseCrashlytics.instance.recordError(e, stack, fatal: false);
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        TopNotification.show(context, 'Đã ghi nhận lỗi thử nghiệm thành công!');
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.report_problem_outlined, size: 16),
+                  label: const Text('Gửi lỗi thử nghiệm (Non-fatal)'),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.red.shade800,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
+                  onPressed: () {
+                    FirebaseCrashlytics.instance.crash();
+                  },
+                  icon: const Icon(Icons.flash_on, size: 16),
+                  label: const Text('Gây sập app (Fatal Crash)'),
+                ),
+              ),
+            ] else
+              const Text(
+                'Crashlytics không hỗ trợ chạy trên nền tảng này.',
+                style: TextStyle(color: Colors.red, fontSize: 13),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Đóng'),
+        ),
+      ],
     );
   }
 }
