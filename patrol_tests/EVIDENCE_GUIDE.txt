@@ -1,0 +1,36 @@
+VIETMAP - PATROL TEST EVIDENCE GUIDE
+====================================
+
+CAU TRUC (theo yeu cau thay)
+patrol_tests/
+  authentication_test.dart   -> TC1, TC11
+  publication_test.dart      -> TC2, TC3  (map: chien dich / su kien)
+  journal_test.dart          -> TC4, TC5  (map: danh sach chien dich)
+  keyword_test.dart          -> TC6, TC7  (map: tim truong THPT)
+  profile_test.dart          -> TC8
+  export_test.dart           -> TC9       (map: upload avatar / Storage)
+  remote_config_test.dart    -> TC10      (app dung env, chua Remote Config)
+
+CAI DAT
+1. flutter pub global activate patrol_cli
+2. flutter pub get
+3. Ket noi emulator Android hoac thiet bi that
+
+CHAY TEST
+  patrol test
+  patrol test -t patrol_tests/authentication_test.dart
+
+TEST CAN DANG NHAP TRUOC (Google Sign-In)
+- TC3, TC5, TC7, TC8, TC9, TC11 can session da login
+- Cach lam: mo app, dang nhap Google thu cong 1 lan, roi chay patrol test
+- TC1, TC10 chay duoc ca khi chua login
+
+EVIDENCE NOP THAY
+1. Screenshot source code: chup 7 file .dart trong patrol_tests/
+2. Screenshot chay test: terminal "patrol test" + emulator
+3. Test results summary: copy bang ket qua Pass/Fail tu terminal
+4. Giai thich tung file: xem bang map o tren
+
+GHI CHU
+- Google Sign-In khong tu dong hoa duoc account picker -> TC1 chi verify UI login
+- Remote Config chua tich hop -> TC10 verify bootstrap app + ghi chu thay
