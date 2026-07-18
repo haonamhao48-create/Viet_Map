@@ -98,6 +98,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     child: Image.asset(
                       'assets/data/vietnam_map_editorial_login.png',
                       fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => ColoredBox(
+                        color: _tealDark.withValues(alpha: 0.85),
+                      ),
                     ),
                   ),
                   // Darker bottom-to-top fade so text at bottom pops
@@ -518,6 +521,7 @@ class _GoogleSignInButtonState extends State<_GoogleSignInButton> {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
+            key: const ValueKey('patrol_login_google_button'),
             onTap: widget.isLoading ? null : widget.onPressed,
             borderRadius: BorderRadius.circular(12),
             child: Padding(
