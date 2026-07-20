@@ -36,6 +36,32 @@ enum ParticipationStatus {
   }
 }
 
+class CheckinResultModel {
+  final String status;
+  final double? distance;
+  final String? errorMessage;
+  final DateTime? verifiedAt;
+  final DateTime? failedAt;
+
+  const CheckinResultModel({
+    required this.status,
+    this.distance,
+    this.errorMessage,
+    this.verifiedAt,
+    this.failedAt,
+  });
+
+  factory CheckinResultModel.fromMap(Map<String, dynamic> map) {
+    return CheckinResultModel(
+      status: map['status']?.toString() ?? '',
+      distance: map['distance'] != null ? (map['distance'] as num).toDouble() : null,
+      errorMessage: map['error_message']?.toString() ?? map['errorMessage']?.toString(),
+      verifiedAt: parseFirestoreDate(map['verified_at'] ?? map['verifiedAt']),
+      failedAt: parseFirestoreDate(map['failed_at'] ?? map['failedAt']),
+    );
+  }
+}
+
 class EventParticipationModel {
   const EventParticipationModel({
     required this.id,
@@ -49,6 +75,7 @@ class EventParticipationModel {
     this.cancelledAt,
     this.event,
     this.evidenceUrl,
+    this.checkinResult,
   });
 
   final String id;
@@ -62,10 +89,12 @@ class EventParticipationModel {
   final DateTime? cancelledAt;
   final EventModel? event;
   final String? evidenceUrl;
+  final CheckinResultModel? checkinResult;
 
   EventParticipationModel copyWith({
     EventModel? event,
     String? evidenceUrl,
+    CheckinResultModel? checkinResult,
   }) {
     return EventParticipationModel(
       id: id,
@@ -79,6 +108,7 @@ class EventParticipationModel {
       cancelledAt: cancelledAt,
       event: event ?? this.event,
       evidenceUrl: evidenceUrl ?? this.evidenceUrl,
+      checkinResult: checkinResult ?? this.checkinResult,
     );
   }
 
@@ -87,6 +117,7 @@ class EventParticipationModel {
     EventModel? event,
   }) {
     final data = snapshot.data() ?? const <String, dynamic>{};
+    final checkinResultData = data['checkin_result'];
 
     return EventParticipationModel(
       id: snapshot.id,
@@ -110,6 +141,9 @@ class EventParticipationModel {
       ),
       event: event,
       evidenceUrl: readFirestoreString(data, ['evidence_url', 'evidenceUrl']),
+      checkinResult: checkinResultData is Map<String, dynamic>
+          ? CheckinResultModel.fromMap(checkinResultData)
+          : null,
     );
   }
 
