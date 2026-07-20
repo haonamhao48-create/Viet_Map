@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
+import '../../../map/presentation/providers/school_provider.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/datasources/campaign_firestore_datasource.dart';
@@ -475,11 +479,41 @@ class UserCheckInController extends StateNotifier<AsyncValue<void>> {
 
     state = const AsyncLoading();
     try {
-      // 1. Tải ảnh bằng chứng lên Firebase Storage
+      // 1. Lấy vị trí GPS hiện tại của người dùng
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+
+      // 2. Kiểm tra khoảng cách tại Client (để tránh upload ảnh tốn tài nguyên nếu ở xa)
+      final eventAsync = ref.read(eventDetailProvider(eventId));
+      final event = eventAsync.valueOrNull;
+      if (event == null) {
+        throw Exception('Không tìm thấy thông tin sự kiện.');
+      }
+
+      final schools = ref.read(schoolsProvider).valueOrNull ?? [];
+      final school = schools.where((s) => s.id == event.schoolId).firstOrNull;
+      if (school == null) {
+        throw Exception('Không tìm thấy thông tin địa điểm của sự kiện.');
+      }
+
+      final distance = const Distance().as(
+        LengthUnit.Meter,
+        LatLng(position.latitude, position.longitude),
+        LatLng(school.latitude, school.longitude),
+      );
+
+      const thresholdMeters = 200.0;
+      if (distance > thresholdMeters) {
+        throw Exception('Bạn ở quá xa địa điểm sự kiện (${distance.round()}m > ${thresholdMeters.round()}m). Không thể check-in.');
+      }
+
+      // 3. Tải ảnh bằng chứng lên Firebase Storage
       final bytes = await imageFile.readAsBytes();
       final extension = imageFile.name.split('.').last;
       final storageRef = FirebaseStorage.instance.ref().child(
-          'users/${user.uid}/evidence_${eventId}_\${DateTime.now().millisecondsSinceEpoch}.$extension');
+          'users/${user.uid}/evidence_${eventId}_${DateTime.now().millisecondsSinceEpoch}.$extension');
 
       await storageRef.putData(
         bytes,
@@ -487,14 +521,52 @@ class UserCheckInController extends StateNotifier<AsyncValue<void>> {
       );
       final downloadUrl = await storageRef.getDownloadURL();
 
-      // 2. Thực hiện check-in với link ảnh bằng chứng
-      await ref
-          .read(participationRepositoryProvider)
-          .checkIn(eventId, user.uid, downloadUrl);
+      // 4. Gửi yêu cầu check-in lên Firestore (chứa toạ độ GPS)
+      final repo = ref.read(participationRepositoryProvider);
+      await repo.requestCheckIn(
+        eventId: eventId,
+        userId: user.uid,
+        evidenceUrl: downloadUrl,
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+
+      // 5. Chờ phản hồi xác thực từ Cloud Functions (tối đa 15 giây)
+      final completer = Completer<bool>();
+      StreamSubscription? subscription;
+
+      subscription = repo.watchParticipation(eventId, user.uid).listen((participation) {
+        if (participation == null) return;
+
+        if (participation.status == ParticipationStatus.attended) {
+          subscription?.cancel();
+          if (!completer.isCompleted) completer.complete(true);
+        } else if (participation.checkinResult != null) {
+          final resultStatus = participation.checkinResult!.status;
+          if (resultStatus == 'failed_invalid_location' || resultStatus == 'error') {
+            subscription?.cancel();
+            if (!completer.isCompleted) {
+              completer.completeError(
+                Exception(participation.checkinResult!.errorMessage ?? 'Xác thực vị trí thất bại.'),
+              );
+            }
+          }
+        }
+      });
+
+      // Bắt đầu timeout
+      final success = await completer.future.timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          subscription?.cancel();
+          throw TimeoutException('Quá thời gian chờ phản hồi xác thực từ máy chủ.');
+        },
+      );
+
       state = const AsyncData(null);
       ref.invalidate(eventParticipationProvider(eventId));
       ref.invalidate(myEventsWithDetailsProvider);
-      return true;
+      return success;
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
       return false;

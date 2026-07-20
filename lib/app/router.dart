@@ -20,6 +20,7 @@ import '../features/campaigns/presentation/screens/campaign_detail_screen.dart';
 import '../features/campaigns/presentation/screens/campaign_list_screen.dart';
 import '../features/campaigns/presentation/screens/event_detail_screen.dart';
 import '../features/campaigns/presentation/screens/my_events_screen.dart';
+import '../features/campaigns/presentation/screens/checkin_verification_screen.dart';
 import '../features/campaigns/presentation/widgets/campaign_auth_gate.dart';
 import '../features/map/presentation/screens/map_screen.dart';
 
@@ -200,6 +201,17 @@ final appRouter = GoRouter(
         return UserRoleGate(
           child: CampaignAuthGate(
             child: EventDetailScreen(eventId: eventId),
+          ),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/events/:id/checkin',
+      builder: (context, state) {
+        final eventId = state.pathParameters['id'];
+        return UserRoleGate(
+          child: CampaignAuthGate(
+            child: CheckInVerificationScreen(eventId: eventId ?? ''),
           ),
         );
       },

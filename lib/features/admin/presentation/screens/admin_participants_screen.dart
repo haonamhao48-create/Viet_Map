@@ -213,27 +213,47 @@ class _AdminParticipantsScreenState extends ConsumerState<AdminParticipantsScree
                       ),
                     );
                   },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F766E).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: const Color(0xFF0F766E).withValues(alpha: 0.2)),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.image_search_rounded, size: 16, color: Color(0xFF0F766E)),
-                        SizedBox(width: 6),
-                        Text(
-                          'Xem ảnh bằng chứng check-in',
-                          style: TextStyle(
-                            color: Color(0xFF0F766E),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      width: 160,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: theme.colorScheme.outlineVariant),
+                      ),
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: Image.network(
+                              item.evidenceUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Center(
+                                child: Icon(Icons.broken_image_outlined, color: Colors.grey),
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.zoom_in, color: Colors.white, size: 12),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Xem ảnh check-in',
+                                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

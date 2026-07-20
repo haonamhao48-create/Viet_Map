@@ -92,7 +92,10 @@ service cloud.firestore {
               || (resource.data.status == 'cancelled'
                 && request.resource.data.status == 'registered')
               || (resource.data.status == 'registered'
-                && request.resource.data.status == 'attended')
+                && request.resource.data.status == 'registered'
+                && request.resource.data.checkin_request != null
+                && request.resource.data.checkin_result != null
+                && request.resource.data.checkin_result.status == 'verifying')
             )
           )
         );
