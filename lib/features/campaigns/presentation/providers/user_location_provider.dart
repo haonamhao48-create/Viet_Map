@@ -1,8 +1,6 @@
-import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import '../../data/models/event_model.dart';
 import '../../../map/presentation/providers/school_provider.dart';
 import 'campaign_provider.dart';
 
@@ -106,8 +104,10 @@ final userLocationStatusProvider =
   // Emit initial position
   try {
     final initialPos = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-      timeLimit: const Duration(seconds: 5),
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 5),
+      ),
     );
     final userLatLng = LatLng(initialPos.latitude, initialPos.longitude);
     final distance = const Distance().as(

@@ -481,8 +481,10 @@ class UserCheckInController extends StateNotifier<AsyncValue<void>> {
     try {
       // 1. Lấy vị trí GPS hiện tại của người dùng
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
       );
 
       // 2. Kiểm tra khoảng cách tại Client (để tránh upload ảnh tốn tài nguyên nếu ở xa)
