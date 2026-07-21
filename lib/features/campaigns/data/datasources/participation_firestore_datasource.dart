@@ -265,4 +265,63 @@ class ParticipationFirestoreDataSource {
       throw ParticipationException(errorMessage!);
     }
   }
+
+  Future<void> requestCheckIn({
+    required String eventId,
+    required String userId,
+    required String evidenceUrl,
+    required double latitude,
+    required double longitude,
+  }) async {
+    final docId = participationDocId(eventId, userId);
+    final docRef = _firestore.collection('event_participations').doc(docId);
+
+    String? errorMessage;
+
+    await _firestore.runTransaction((transaction) async {
+      errorMessage = null;
+
+      final snap = await transaction.get(docRef);
+      if (!snap.exists) {
+        errorMessage = 'Bạn chưa đăng ký sự kiện này.';
+        return;
+      }
+
+      final status = snap.data()?['status']?.toString() ?? '';
+      if (status == ParticipationStatus.attended.firestoreValue) {
+        errorMessage = 'Bạn đã check-in sự kiện này rồi.';
+        return;
+      }
+      if (status != ParticipationStatus.registered.firestoreValue) {
+        errorMessage = 'Không thể check-in (trạng thái: $status).';
+        return;
+      }
+
+      transaction.update(docRef, {
+        'checkin_request': {
+          'latitude': latitude,
+          'longitude': longitude,
+          'evidence_url': evidenceUrl,
+          'timestamp': FieldValue.serverTimestamp(),
+        },
+        'checkin_result': {
+          'status': 'verifying',
+        },
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+    });
+
+    if (errorMessage != null) {
+      throw ParticipationException(errorMessage!);
+    }
+  }
+
+  Stream<EventParticipationModel?> watchParticipation(String eventId, String userId) {
+    final docId = participationDocId(eventId, userId);
+    return _firestore
+        .collection('event_participations')
+        .doc(docId)
+        .snapshots()
+        .map((snapshot) => snapshot.exists ? EventParticipationModel.fromFirestore(snapshot) : null);
+  }
 }

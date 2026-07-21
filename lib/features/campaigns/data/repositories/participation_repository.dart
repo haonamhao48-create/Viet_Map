@@ -48,4 +48,22 @@ class ParticipationRepository {
 
   Future<void> checkIn(String eventId, String userId, String evidenceUrl) =>
       _dataSource.checkIn(eventId, userId, evidenceUrl);
+
+  Future<void> requestCheckIn({
+    required String eventId,
+    required String userId,
+    required String evidenceUrl,
+    required double latitude,
+    required double longitude,
+  }) =>
+      _dataSource.requestCheckIn(
+        eventId: eventId,
+        userId: userId,
+        evidenceUrl: evidenceUrl,
+        latitude: latitude,
+        longitude: longitude,
+      );
+
+  Stream<EventParticipationModel?> watchParticipation(String eventId, String userId) =>
+      _dataSource.watchParticipation(eventId, userId);
 }

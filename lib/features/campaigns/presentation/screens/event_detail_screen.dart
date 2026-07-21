@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
-
 import '../../../../app/widgets/top_notification.dart';
 
 import '../../../../shared/widgets/loading_indicator.dart';
@@ -127,6 +125,30 @@ class EventDetailScreen extends ConsumerWidget {
                           ParticipationStatusChip(status: participation.status),
                         ],
                       ),
+                      if (participation.status == ParticipationStatus.attended &&
+                          participation.evidenceUrl != null &&
+                          participation.evidenceUrl!.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Ảnh minh chứng check-in của bạn:',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: Image.network(
+                              participation.evidenceUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: Colors.grey.shade200,
+                                child: const Icon(Icons.broken_image_outlined, size: 36, color: Colors.grey),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ],
                 ),
@@ -242,28 +264,8 @@ class EventDetailScreen extends ConsumerWidget {
               child: FilledButton.icon(
                 onPressed: isLoading || isLoadingCheckIn
                     ? null
-                    : () async {
-                        // 1. Yêu cầu chọn nguồn ảnh làm bằng chứng check-in
-                        final image = await _pickImageSource(context);
-
-                        if (image == null) {
-                          if (context.mounted) {
-                            TopNotification.show(
-                              context,
-                              'Bạn cần cung cấp ảnh làm bằng chứng check-in.',
-                              isError: true,
-                            );
-                          }
-                          return;
-                        }
-
-                        // 2. Thực hiện check-in với ảnh
-                        final ok = await ref
-                            .read(userCheckInControllerProvider.notifier)
-                            .checkIn(eventId, image);
-                        if (ok && context.mounted) {
-                          TopNotification.show(context, 'Check-in thành công!');
-                        }
+                    : () {
+                        context.push('/events/$eventId/checkin');
                       },
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF0F766E),
@@ -272,14 +274,11 @@ class EventDetailScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                icon: isLoadingCheckIn
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.check_circle_outline_rounded),
-                label: const Text('Check-in'),
+                icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.white),
+                label: const Text(
+                  'Check-in',
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
               ),
             ),
           ],
@@ -332,67 +331,6 @@ class EventDetailScreen extends ConsumerWidget {
             )
           : const Icon(Icons.how_to_reg_outlined),
       label: Text(isFull ? 'Đã đủ chỗ' : 'Đăng ký tham gia'),
-    );
-  }
-
-  Future<XFile?> _pickImageSource(BuildContext context) async {
-    final theme = Theme.of(context);
-    return await showModalBottomSheet<XFile?>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'CHỌN BẰNG CHỨNG CHECK-IN',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF0F766E),
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                leading: const Icon(Icons.camera_alt_outlined, color: Color(0xFF0F766E)),
-                title: const Text('Chụp ảnh trực tiếp'),
-                onTap: () async {
-                  final picker = ImagePicker();
-                  final file = await picker.pickImage(
-                    source: ImageSource.camera,
-                    imageQuality: 80,
-                    maxWidth: 1024,
-                    maxHeight: 1024,
-                  );
-                  if (context.mounted) Navigator.pop(context, file);
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF0F766E)),
-                title: const Text('Chọn ảnh từ Thư viện'),
-                onTap: () async {
-                  final picker = ImagePicker();
-                  final file = await picker.pickImage(
-                    source: ImageSource.gallery,
-                    imageQuality: 80,
-                    maxWidth: 1024,
-                    maxHeight: 1024,
-                  );
-                  if (context.mounted) Navigator.pop(context, file);
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

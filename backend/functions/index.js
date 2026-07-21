@@ -176,3 +176,117 @@ exports.sendAdminNotification = functions.firestore
       });
     }
   });
+
+// 3. Xác thực vị trí check-in sự kiện
+exports.verifyEventCheckIn = functions.firestore
+  .document("event_participations/{participationId}")
+  .onUpdate(async (change, context) => {
+    const beforeData = change.before.data();
+    const afterData = change.after.data();
+
+    // Chỉ chạy nếu có request check-in mới gửi lên
+    const hasNewRequest =
+      afterData.checkin_request &&
+      (!beforeData.checkin_request || 
+       beforeData.checkin_request.timestamp !== afterData.checkin_request.timestamp);
+
+    if (!hasNewRequest) {
+      return null;
+    }
+
+    console.log(`Bắt đầu xác thực vị trí check-in cho User: ${afterData.user_id}, Event: ${afterData.event_id}`);
+    const { latitude, longitude, evidence_url } = afterData.checkin_request;
+
+    try {
+      // 1. Lấy thông tin sự kiện
+      const eventSnap = await db.collection("events").doc(afterData.event_id).get();
+      if (!eventSnap.exists) {
+        throw new Error("Sự kiện không tồn tại trên hệ thống.");
+      }
+      const eventData = eventSnap.data();
+      const schoolId = eventData.school_id || eventData.schoolId;
+      if (!schoolId) {
+        throw new Error("Sự kiện này không có địa điểm trường học được liên kết.");
+      }
+
+      // 2. Lấy toạ độ trường học liên kết
+      const schoolSnap = await db.collection("high_schools").doc(schoolId).get();
+      if (!schoolSnap.exists) {
+        throw new Error("Không tìm thấy thông tin trường học tương ứng.");
+      }
+      const schoolData = schoolSnap.data();
+
+      let schoolLat = schoolData.latitude || schoolData.lat || schoolData.vi_do;
+      let schoolLng = schoolData.longitude || schoolData.lng || schoolData.kinh_do;
+
+      if (schoolData.location && typeof schoolData.location.latitude === 'number') {
+        schoolLat = schoolData.location.latitude;
+        schoolLng = schoolData.location.longitude;
+      }
+
+      if (typeof schoolLat !== 'number' || typeof schoolLng !== 'number') {
+        throw new Error("Địa điểm trường học chưa cấu hình tọa độ hợp lệ trên hệ thống.");
+      }
+
+      // 3. Tính khoảng cách Haversine
+      const distance = calculateHaversineDistance(latitude, longitude, schoolLat, schoolLng);
+      console.log(`Khoảng cách đo được: ${distance.toFixed(1)} mét.`);
+
+      const thresholdMeters = 200.0;
+
+      if (distance <= thresholdMeters) {
+        // Hợp lệ -> Chuyển trạng thái sang attended
+        await change.after.ref.update({
+          status: "attended",
+          evidence_url: evidence_url,
+          checkin_result: {
+            status: "success",
+            distance: distance,
+            verified_at: admin.firestore.FieldValue.serverTimestamp()
+          },
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        console.log(`Xác thực thành công. User ${afterData.user_id} đã check-in thành công.`);
+      } else {
+        // Không hợp lệ -> Giữ nguyên status registered và cập nhật lỗi địa điểm
+        await change.after.ref.update({
+          status: "registered", // trả lại/giữ nguyên registered
+          checkin_result: {
+            status: "failed_invalid_location",
+            distance: distance,
+            failed_at: admin.firestore.FieldValue.serverTimestamp(),
+            error_message: `Vị trí không chính xác. Bạn đang cách địa điểm ${Math.round(distance)}m (phạm vi cho phép: ${thresholdMeters}m).`
+          },
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        console.log(`Xác thực thất bại. Khoảng cách quá xa: ${distance.toFixed(1)}m`);
+      }
+    } catch (error) {
+      console.error("Lỗi trong quá trình xác thực check-in:", error);
+      await change.after.ref.update({
+        status: "registered",
+        checkin_result: {
+          status: "error",
+          failed_at: admin.firestore.FieldValue.serverTimestamp(),
+          error_message: `Lỗi xác thực hệ thống: ${error.message || error.toString()}`
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    return null;
+  });
+
+function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // Bán kính Trái Đất theo mét
+  const phi1 = (lat1 * Math.PI) / 180;
+  const phi2 = (lat2 * Math.PI) / 180;
+  const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+  const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+    Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // Khoảng cách theo mét
+}
