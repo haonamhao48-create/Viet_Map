@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
-
 import '../../../../app/widgets/top_notification.dart';
 
 import '../../../../shared/widgets/loading_indicator.dart';
@@ -333,67 +331,6 @@ class EventDetailScreen extends ConsumerWidget {
             )
           : const Icon(Icons.how_to_reg_outlined),
       label: Text(isFull ? 'Đã đủ chỗ' : 'Đăng ký tham gia'),
-    );
-  }
-
-  Future<XFile?> _pickImageSource(BuildContext context) async {
-    final theme = Theme.of(context);
-    return await showModalBottomSheet<XFile?>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'CHỌN BẰNG CHỨNG CHECK-IN',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF0F766E),
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                leading: const Icon(Icons.camera_alt_outlined, color: Color(0xFF0F766E)),
-                title: const Text('Chụp ảnh trực tiếp'),
-                onTap: () async {
-                  final picker = ImagePicker();
-                  final file = await picker.pickImage(
-                    source: ImageSource.camera,
-                    imageQuality: 80,
-                    maxWidth: 1024,
-                    maxHeight: 1024,
-                  );
-                  if (context.mounted) Navigator.pop(context, file);
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF0F766E)),
-                title: const Text('Chọn ảnh từ Thư viện'),
-                onTap: () async {
-                  final picker = ImagePicker();
-                  final file = await picker.pickImage(
-                    source: ImageSource.gallery,
-                    imageQuality: 80,
-                    maxWidth: 1024,
-                    maxHeight: 1024,
-                  );
-                  if (context.mounted) Navigator.pop(context, file);
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

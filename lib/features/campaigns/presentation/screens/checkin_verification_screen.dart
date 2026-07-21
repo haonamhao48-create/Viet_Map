@@ -155,7 +155,6 @@ class _CheckInVerificationScreenState
                       ),
                       data: (locationStatus) {
                         final inRange = locationStatus.type == LocationStatusType.inRange;
-                        final distance = locationStatus.distance?.round() ?? 0;
                         final lat = locationStatus.latitude?.toStringAsFixed(6) ?? '0.0';
                         final lng = locationStatus.longitude?.toStringAsFixed(6) ?? '0.0';
 
